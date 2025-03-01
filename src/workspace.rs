@@ -7,14 +7,11 @@ pub struct Workspace {
     pub path: PathBuf
 }
 impl Workspace {
-    pub fn build(path: PathBuf) -> io::Result<Self> {
-        if !path.exists() {
-            return Err(io::Error::new(io::ErrorKind::NotFound, "Uninitialized"));
-        }
-        
-        Ok(Self{path})
+    pub fn new(path: PathBuf) -> Self {
+        Self{ path }
     }
 
+    // todo: make instance method? for what?
     pub fn list_files(path: PathBuf) -> io::Result<Vec<PathBuf>> {
         let mut re: Vec<Vec<PathBuf>> = vec![];
         for entry in path.read_dir()? {
@@ -32,4 +29,9 @@ impl Workspace {
             .collect::<Vec<PathBuf>>();
         Ok(re)
     }
+
+    pub fn get_relative_ancestors(&self, _target_path: PathBuf) -> Vec<PathBuf> {
+        vec![]
+    }
+
 }

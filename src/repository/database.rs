@@ -1,7 +1,4 @@
-use crate::{
-    traits::*,
-    hash256::Hash256,
-};
+use crate::prelude::*;
 use std::{
     path::PathBuf,
     io::{self, Read},
@@ -12,25 +9,21 @@ pub struct Database {
     path: PathBuf
 }
 impl Database {
-    pub fn build(path: PathBuf) -> Self {
-        Self { path }
+    pub fn build(path: PathBuf) -> io::Result<Self> {
+        let re = Self { path };
+
+        Ok(re)
     }
     
-    pub fn folder_name() -> String {
-        "objects".to_string()
-    }
-
-    // todo: what name should temporary file have?
     pub fn temporary_file_name() -> String {
         "tmp".to_string()
     }
 
-    pub fn store<O: Objectify + CalculateHash>(&self, obj: &O) -> io::Result<()> {
+    pub fn store<O: Objectify + CalculateHash>(&self, obj: &O) -> io::Result<Hash256> {
         // Create temporary file and rename it.
-        // In this way, race condition will not happen?
+        // In this way, race condition may not happen?
 
-        // todo: move hashing into class scope.
-        let hash = Hash256::build(obj.calculate_hash());
+        let hash = obj.calculate_hash()?;
         let (dir, file) = hash.split();
 
         let mut dir_path = self.path.clone();
@@ -48,11 +41,11 @@ impl Database {
         target_path.push(file);
         let _ = fs::rename(&tmp_path, &target_path)?;
 
-        Ok(())
+        Ok(hash)
     }
 
     pub fn retrieve<O: Objectify + CalculateHash>(&self, obj: &O) -> io::Result<String> {
-        let hash = Hash256::build(obj.calculate_hash());
+        let hash = obj.calculate_hash()?;
         let (dir, file) = hash.split();
 
         let mut target_path = self.path.clone();
