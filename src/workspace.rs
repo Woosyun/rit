@@ -1,6 +1,7 @@
 use std::{
     path::PathBuf,
     io,
+    fs,
 };
 
 pub struct Workspace {
@@ -30,8 +31,14 @@ impl Workspace {
         Ok(re)
     }
 
-    pub fn get_relative_ancestors(&self, _target_path: PathBuf) -> Vec<PathBuf> {
-        vec![]
+    pub fn get_ancestors(&self, path: PathBuf) -> Vec<PathBuf> {
+        path.ancestors()
+            .into_iter()
+            .map(|p| p.to_owned())
+            .collect::<Vec<_>>()
     }
 
+    pub fn read_file(&self, path: PathBuf) -> io::Result<String> {
+        fs::read_to_string(&path)
+    }
 }

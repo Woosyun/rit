@@ -1,18 +1,26 @@
-use std::{
-    hash::Hash,
-    io
-};
+use sha2::{Digest, Sha256};
 
-#[derive(Clone, Hash)]
+pub trait Objectify {
+    fn objectify(&self) -> String;
+
+    fn calculate_hash(&self) -> Hash256 {
+        let mut hasher = Sha256::new();
+        hasher.update(self.objectify());
+
+        let hash = hasher.finalize()
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        Hash256::new(hash)
+    }
+}
+
+#[derive(Clone)]
 pub struct Hash256(Vec<u8>);
 
 impl Hash256 {
-    pub fn new(content: Vec<u8>) -> io::Result<Self> {
-        if content.len() != 32 {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "hash value must has 32 bytes"));
-        }
-
-        Ok(Self(content))
+    pub fn new(content: Vec<u8>) -> Self {
+        Self(content)
     }
     pub fn split(&self) -> (String, String) {
         let mut hx = self.0

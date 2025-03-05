@@ -1,30 +1,22 @@
 use crate::prelude::*;
-use std::{
-    io,
-};
 
 impl Command {
-    pub fn commit(&self, message: String) -> io::Result<String> {
+    pub fn commit(&self, message: String) -> std::io::Result<String> {
         let db = self.get_repository()?
             .get_database()?;
 
         let root = self.get_workdir();
-        let mut tree = Entry::build_tree(root.clone());
+        let mut tree = Tree::new();
         
         for file in Workspace::list_files(root)? {
-            let content = String::new();
-            // todo: read file from path
+            let oid = self.workspace.read_file(file.clone())
+                .map(|content| db.store(&Blob::new(content)))??;
+            let metadata = self.workspace.read_metadata(file.clone())?;
+            let entry = Entry::new(EntryKind::Blob, oid, /*name*/);
 
-            let blob = Blob::new(content);
-            let hash = db.store(&blob)?;
-
-            let entry = Entry::build_blob(file, Some(hash));
             // todo: crate ancestors
             //let ancestors = self.workspace.get_ancestors(file);
-            let ancestors = entry.path.clone();
-            let ancestors = ancestors.ancestors()
-                .into_iter()
-                .collect::<Vec<_>>();
+            let ancestors = self.workspace.get_ancestors(file);
             tree.add_entry(ancestors, entry);
         }
 

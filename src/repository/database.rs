@@ -1,61 +1,38 @@
-use crate::prelude::*;
 use std::{
     path::PathBuf,
-    io::{self, Read},
+    io::{self, prelude::*},
     fs,
 };
+use crate::prelude::*;
 
-pub struct Database {
-    path: PathBuf
-}
-impl Database {
-    pub fn build(path: PathBuf) -> io::Result<Self> {
-        let re = Self { path };
+pub trait Database {
+    fn get_database(&self) -> io::Result<PathBuf>;
 
-        Ok(re)
-    }
-    
-    pub fn temporary_file_name() -> String {
-        "tmp".to_string()
-    }
+    fn store_object<O: Objectify>(&self, obj: O) -> io::Result<()> {
+        let hash256 = obj.calculate_hash();
+        let object = obj.objectify();
 
-    pub fn store<O: Objectify + CalculateHash>(&self, obj: &O) -> io::Result<Hash256> {
-        // Create temporary file and rename it.
-        // In this way, race condition may not happen?
+        let (dir, file) = hash256.split();
+        let mut path = self.get_database()?;
+        path.push(dir);
+        let _ = fs::create_dir(&path)?;
 
-        let hash = obj.calculate_hash()?;
-        let (dir, file) = hash.split();
+        let mut tmp = path.clone();
 
-        let mut dir_path = self.path.clone();
-        dir_path.push(dir);
-
-        let mut tmp_path = dir_path.clone();
-        tmp_path.push(Database::temporary_file_name());
-        if fs::exists(&tmp_path)? {
-            return Err(io::Error::new(io::ErrorKind::AlreadyExists, "Temporary file already exists."));
+        path.push(file);
+        if path.exists() {
+            return Ok(());
         }
-        let _ = fs::File::create(&tmp_path)?;
-        let _ = fs::write(&tmp_path, &obj.objectify())?;
 
-        let mut target_path = dir_path.clone();
-        target_path.push(file);
-        let _ = fs::rename(&tmp_path, &target_path)?;
+        tmp.push(self.tmp_file_name());
+        let mut tmp_file = fs::File::create(&tmp)?;
+        tmp_file.write_all(object.as_bytes())?;
+        let _ = fs::rename(tmp, path)?;
 
-        Ok(hash)
+        Ok(())
     }
 
-    pub fn retrieve<O: Objectify + CalculateHash>(&self, obj: &O) -> io::Result<String> {
-        let hash = obj.calculate_hash()?;
-        let (dir, file) = hash.split();
-
-        let mut target_path = self.path.clone();
-        target_path.push(dir);
-        target_path.push(file);
-
-        let mut content = String::new();
-        let mut file =  fs::File::open(&target_path)?;
-        let _ = file.read_to_string(&mut content);
-
-        Ok(content)
+    fn tmp_file_name<'a>(&'a self) -> &'a str {
+        "tmp"
     }
 }
