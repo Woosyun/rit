@@ -3,6 +3,7 @@ use std::{
     io,
     fs,
 };
+use crate::prelude::*;
 
 pub struct Workspace {
     pub path: PathBuf
@@ -38,7 +39,10 @@ impl Workspace {
             .collect::<Vec<_>>()
     }
 
-    pub fn read_file(&self, path: PathBuf) -> io::Result<String> {
-        fs::read_to_string(&path)
+    pub fn read_to_blob(&self, path: PathBuf) -> io::Result<Blob> {
+        let re = fs::read_to_string(&path)
+            .map(Blob::new)?;
+
+        Ok(re)
     }
 }
