@@ -25,19 +25,23 @@ impl Tree {
         f(self)
     }
 }
+impl From<Tree> for String {
+    fn from(item: Tree) -> String {
+        format!("{} tree {} {}", 
+    }
+}
 impl Objectify for Tree {
-    fn objectify<'a>(&'a self) -> &'a str {
-        &self.children
-            .iter()
-            .map(|(name, tree_entry)| {
-                let entry = match tree_entry {
-                    TreeEntry::Tree(tree) => Entry::new(EntryKind::Tree, tree.oid.unwrap(), name.clone()),
-                    TreeEntry::Entry(entry) => entry,
-                };
-
-                entry.into()
+    fn objectify(&self) -> String {
+        // don't make new entry?
+        self.children.clone()
+            .into_iter()
+            .map(|(name, child)| {
+                match child {
+                    TreeEntry::Tree(ref tree) => tree.into(),
+                    TreeEntry::Entry(entry) => entry.into(),
+                }
             })
-            .collect::<Vec<_>>()
+            .collect::<Vec<String>>()
             .join("\n")
     }
     fn set_oid(&mut self, oid: Hash256) {

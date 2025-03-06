@@ -2,11 +2,12 @@ use sha2::{Digest, Sha256};
 use std::io;
 
 pub trait Objectify {
-    fn objectify<'a>(&'a self) -> &'a str;
+    fn objectify(&self) -> String;
     fn set_oid(&mut self, oid: Hash256);
     fn get_oid(&self) -> Option<&Hash256>;
 
-    fn calculate_hash(&self) -> Hash256 {
+    // calculate hash value from object
+    fn calculate_oid(&self) -> Hash256 {
         let mut hasher = Sha256::new();
         hasher.update(self.objectify());
 
@@ -18,7 +19,7 @@ pub trait Objectify {
     }
 
     fn update_oid(&mut self) -> io::Result<()> {
-        let oid = self.calculate_hash();
+        let oid = self.calculate_oid();
         self.set_oid(oid);
         Ok(())
     }

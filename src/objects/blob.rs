@@ -13,8 +13,8 @@ impl Blob {
     }
 }
 impl Objectify for Blob {
-    fn objectify<'a>(&'a self) -> &'a str {
-        &self.content
+    fn objectify(&self) -> String {
+        self.content.clone()
     }
     fn set_oid(&mut self, oid: Hash256) {
         self.oid = Some(oid);
