@@ -1,48 +1,67 @@
+use crate::prelude::*;
 use std::{
-    path::PathBuf,
+    path::{PathBuf, Path},
     io,
     fs,
 };
-use crate::prelude::*;
 
 pub struct Workspace {
-    pub path: PathBuf
+    path: PathBuf,
 }
 impl Workspace {
-    pub fn new(path: PathBuf) -> Self {
-        Self{ path }
+    pub fn build(path: PathBuf) -> io::Result<Self> {
+        if !path.exists() {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "workspace not found"));
+        }
+
+        let ws = Self {
+            path
+        };
+
+        Ok(ws)
     }
 
-    // todo: make instance method? for what?
-    pub fn list_files(path: PathBuf) -> io::Result<Vec<PathBuf>> {
-        let mut re: Vec<Vec<PathBuf>> = vec![];
-        for entry in path.read_dir()? {
-            let path = entry?.path();
-            if path.is_dir() {
-                re.push(Workspace::list_files(path)?);
-            } else {
-                re.push(vec![path]);
+    pub fn list_files(&self, path: Option<PathBuf>) -> io::Result<Vec<PathBuf>> {
+        let path = match path {
+            Some(path) => path,
+            None => self.path.clone(),
+        };
+
+        let mut files = vec![];
+        for entry in fs::read_dir(path)? {
+            if let Ok(entry) = entry {
+                if let Ok(file_type) = entry.file_type() {
+                    if file_type.is_file() {
+                        files.push(vec![entry.path()]);
+                    } else if let Ok(sub_files) = self.list_files(Some(entry.path())) {
+                        files.push(sub_files);
+                    } else {
+                        files.push(vec![]);
+                    }
+                }
             }
         }
-        
-        let re = re
+
+        let files = files
             .into_iter()
             .flatten()
-            .collect::<Vec<PathBuf>>();
-        Ok(re)
+            .collect::<Vec<_>>();
+
+        Ok(files)
     }
 
-    pub fn get_ancestors(&self, path: PathBuf) -> Vec<PathBuf> {
-        path.ancestors()
-            .into_iter()
-            .map(|p| p.to_owned())
-            .collect::<Vec<_>>()
+    pub fn read_to_blob(&self, file: &Path) -> io::Result<Blob> {
+        let content = fs::read_to_string(file)?;
+        Ok(Blob::new(content))
     }
 
-    pub fn read_to_blob(&self, path: PathBuf) -> io::Result<Blob> {
-        let re = fs::read_to_string(&path)
-            .map(Blob::new)?;
-
-        Ok(re)
+    pub fn ancestors(&self, path: &Path) -> io::Result<Vec<PathBuf>> {
+        let root = self.path.clone();
+        let rel = path.strip_prefix(root)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+        let ancestors = rel.ancestors()
+            .map(|p| p.to_path_buf())
+            .collect::<Vec<_>>();
+        Ok(ancestors)
     }
 }

@@ -1,12 +1,19 @@
 pub mod workspace;
 pub mod repository;
-pub mod objects;
-//pub mod commands;
+pub mod objectify;
+pub mod blob;
+pub mod tree;
+pub mod commit;
+pub mod command;
 
 pub mod prelude {
-    pub use super::*;
+    use super::*;
 
     pub use repository::*;
-    pub use objects::*;
-    pub use workspace::Workspace;
+    pub use workspace::*;
+    pub use objectify::*;
+    pub use blob::*;
+    pub use tree::*;
+    pub use commit::*;
+    pub use command::*;
 }

@@ -1,0 +1,85 @@
+use crate::prelude::*;
+use std::{
+    path::PathBuf,
+    collections::HashMap,
+    io,
+};
+
+pub struct Tree(HashMap<String, TreeEntry>);
+pub enum TreeEntry {
+    Tree(Tree),
+    Entry(Entry),
+}
+
+impl Tree {
+    pub fn new() -> Self {
+        Self ( HashMap::new() )
+    }
+
+    // ancestors are ordered from bottom to top
+    pub fn add_entry(&mut self, mut ancestors: Vec<PathBuf>, entry: Entry) {
+        let file_name = ancestors.pop().unwrap()
+            .file_name().unwrap()
+            .to_str().unwrap()
+            .to_string();
+
+        if ancestors.is_empty() {
+            let _ = self.0.insert(file_name, TreeEntry::Entry(entry));
+            return;
+        }
+
+        if let Some(tree) = self.0.get_mut(&file_name) {
+            if let TreeEntry::Tree(tree) = tree {
+                tree.add_entry(ancestors, entry);
+            }
+        } else {
+            let mut tree = Tree::new();
+            tree.add_entry(ancestors, entry);
+            self.0.insert(file_name, TreeEntry::Tree(tree));
+        }
+    }
+
+    // Because of type system,
+    // traverse method could not work generally?
+    pub fn traverse_mut<F: Fn(&mut Tree) -> TreeEntry + Copy>(&mut self, f: F) -> TreeEntry {
+        for (_, tree_entry) in self.0.iter_mut() {
+            if let TreeEntry::Tree(tree) = tree_entry {
+                *tree_entry = tree.traverse_mut(f)
+            }
+        }
+
+        f(self)
+    }
+
+    pub fn store_rec(&mut self, db: &Repository) -> io::Result<Oid> {
+        for (name, tree_entry) in self.0.iter_mut() {
+            match tree_entry {
+                TreeEntry::Tree(tree) => {
+                    let oid = tree.store_rec(db)?;
+                    let entry = Entry::from_tree(oid, name);
+                    *tree_entry = TreeEntry::Entry(entry);
+                },
+                _ => ()
+            }
+        }
+
+        db.store(self)
+    }
+}
+
+impl Objectify for Tree {
+    fn objectify(&self) -> String {
+        self.0
+            .iter()
+            .map(|(_, tree_entry)| {
+                if let TreeEntry::Entry(entry) = tree_entry {
+                    entry.into()
+                } else {
+                    //this code should not run
+                    "".to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
