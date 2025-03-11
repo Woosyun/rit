@@ -59,9 +59,10 @@ impl Workspace {
         let root = self.path.clone();
         let rel = path.strip_prefix(root)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
-        let ancestors = rel.ancestors()
+        let mut ancestors = rel.ancestors()
             .map(|p| p.to_path_buf())
             .collect::<Vec<_>>();
+        let _ = ancestors.pop();
         Ok(ancestors)
     }
 }

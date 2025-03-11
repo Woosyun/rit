@@ -13,6 +13,7 @@ pub trait Objectify {
     }
 }
 
+#[derive(Debug)]
 pub struct Oid(Vec<u8>);
 impl Oid {
     fn build(content: &str) -> Self {
@@ -30,8 +31,8 @@ impl Oid {
             .iter()
             .map(|b| format!("{:02x}", b))
             .collect::<Vec<String>>();
-        let dir = hex.split_off(2).join("");
-        let file = hex.join("");
+        let file = hex.split_off(2).join("");
+        let dir = hex.join("");
 
         (dir, file)
     }

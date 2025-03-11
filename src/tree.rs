@@ -5,10 +5,12 @@ use std::{
     io,
 };
 
+#[derive(Debug)]
 enum Entry {
     Tree(Tree),
     Blob(Oid),
 }
+#[derive(Debug)]
 pub struct Tree {
     pub oid: Option<Oid>,
     children: HashMap<String, Entry>

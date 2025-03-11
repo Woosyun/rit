@@ -49,6 +49,7 @@ impl Repository {
         let (oid, content) = obj.to_object();
         let (dir, file) = oid.split();
         let mut path = self.path.clone();
+        path.push(OBJECTS);
         path.push(&dir);
         path.push(&file);
         if path.exists() {
@@ -56,7 +57,9 @@ impl Repository {
         }
 
         let mut tmp = self.path.clone();
+        tmp.push(OBJECTS);
         tmp.push(&dir);
+        let _ = fs::create_dir(&tmp)?;
         tmp.push("tmp");
         let mut buffer = File::create(&tmp)?;
         let _ = buffer.write_all(content.as_bytes())?;

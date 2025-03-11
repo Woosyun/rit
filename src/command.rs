@@ -25,7 +25,7 @@ impl Command {
         Repository::init(workdir)
     }
 
-    pub fn commit(&self, _msg: String) -> io::Result<String> {
+    pub fn commit(&self, msg: String) -> io::Result<String> {
         let files = self.ws.list_files(None)?;
 
         let mut tree = Tree::new();
@@ -45,7 +45,7 @@ impl Command {
         })?;
 
         let root_oid = tree.oid.unwrap();
-        let commit = Commit::new("author".to_string(), root_oid, "author".to_string());
+        let commit = Commit::new("author".to_string(), root_oid, msg);
         let commit_oid = self.repo.store(&commit)?;
 
         let result = format!("commit is stored and id is {}", commit_oid.into_string());
