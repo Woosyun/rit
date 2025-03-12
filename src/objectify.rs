@@ -1,5 +1,8 @@
 use sha2::{Digest, Sha256};
-use std::io;
+use std::{
+    io,
+    fmt::Write,
+};
 
 pub trait Objectify {
     fn objectify(&self) -> String;
@@ -38,23 +41,27 @@ impl Oid {
         (dir, file)
     }
 
-    pub fn into_string(&self) -> String {
-        self.0
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<Vec<_>>()
-            .join("")
+    pub fn decode(&self) -> String {
+        let mut s = String::with_capacity(self.0.len() * 2);
+        for b in &self.0 {
+            write!(s, "{:02x}", b).unwrap();
+        }
+        s
     }
 
-    pub fn from_string(hex: String) -> io::Result<Self> {
-        if hex.len() % 2 != 0 {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "len of input is not even"));
+    pub fn encode(hex: &str) -> io::Result<Self> {
+        if hex.chars().count() != 64 {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "hex string should be 64 characters"));
         }
 
-        // todo: fix
-        (0..hex.len())
-            .step_by(2)
-            .map(|i| u8::from_str_radix(&hex[i..i+2], 16).map_err(|e| e.to_string()))
-            .collect::<Vec<_>>()
+        let mut result = Vec::with_capacity(hex.len() / 2);
+        for i in (0..hex.len()).step_by(2) {
+            let b = u8::from_str_radix(&hex[i..i+2], 16)
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "cannot parse hex"))?;
+            result[i/2] = b;
+        }
+
+
+        Ok(Oid(result))
     }
 }

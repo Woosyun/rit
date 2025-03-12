@@ -17,6 +17,10 @@ impl Repository {
         let mut repo = workdir;
         repo.push(RIT);
 
+        if !repo.exists() {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "cannot found .rit"));
+        }
+
         let repo = Self {
             path: repo
         };
@@ -73,22 +77,28 @@ impl Repository {
         head.push(HEAD);
 
         let mut tmp = self.path.clone();
-        tmp.push("tmp_head");
-        let _ = fs::write(tmp, oid.into_string())?;
-        let _ = fs::rename(tmp, head)?;
+        tmp.push("tmp");
+        let _ = fs::write(&tmp, oid.decode())?;
+        let _ = fs::rename(&tmp, head)?;
 
         Ok(())
     }
-    pub fn get_head(&self) -> Option<Oid> {
+    pub fn get_head(&self) -> io::Result<Option<Oid>> {
         let mut head = self.path.clone();
         head.push(HEAD);
 
+        if !head.exists() {
+            return Ok(None);
+        }
+
         let content = fs::read_to_string(&head)?;
-        if content.is_empty() {
+        let result = if content.is_empty() {
             None
         } else {
-            // todo: fix
-            Oid::
-        }
+            let oid = Oid::encode(&content)?;
+            Some(oid)
+        };
+
+        Ok(result)
     }
 }

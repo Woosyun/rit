@@ -64,13 +64,13 @@ impl Objectify for Tree {
                 match entry {
                     Entry::Tree(tree) => {
                         if let Some(oid) = &tree.oid {
-                            format!("40000 tree {} {}", oid.into_string(), name)
+                            format!("40000 tree {} {}", oid.decode(), name)
                         } else {
                             //this code should not run?!
                             format!("")
                         }
                     }
-                    Entry::Blob(oid) => format!("100644 blob {} {}", oid.into_string(), name),
+                    Entry::Blob(oid) => format!("100644 blob {} {}", oid.decode(), name),
                 }
             })
             .collect::<Vec<String>>()
