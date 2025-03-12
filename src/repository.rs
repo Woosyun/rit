@@ -7,6 +7,7 @@ use std::{
 
 const RIT: &str = ".rit";
 const OBJECTS: &str = "objects";
+const HEAD: &str = "HEAD";
 
 pub struct Repository {
     path: PathBuf,
@@ -27,11 +28,11 @@ impl Repository {
         let mut repo = workdir;
         repo.push(RIT);
 
-        if repo.exists() {
-            return Ok("repository already exists");
+        if !repo.exists() {
+            let _ = fs::create_dir(&repo)?;
         }
 
-        let _ = fs::create_dir(&repo)?;
+        // does file need to be created to be written?
 
         let mut objects = repo;
         objects.push(OBJECTS);
@@ -65,5 +66,29 @@ impl Repository {
         let _ = buffer.write_all(content.as_bytes())?;
         let _ = fs::rename(tmp, path)?;
         Ok(oid)
+    }
+
+    pub fn set_head(&self, oid: &Oid) -> io::Result<()> {
+        let mut head = self.path.clone();
+        head.push(HEAD);
+
+        let mut tmp = self.path.clone();
+        tmp.push("tmp_head");
+        let _ = fs::write(tmp, oid.into_string())?;
+        let _ = fs::rename(tmp, head)?;
+
+        Ok(())
+    }
+    pub fn get_head(&self) -> Option<Oid> {
+        let mut head = self.path.clone();
+        head.push(HEAD);
+
+        let content = fs::read_to_string(&head)?;
+        if content.is_empty() {
+            None
+        } else {
+            // todo: fix
+            Oid::
+        }
     }
 }

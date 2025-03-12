@@ -45,8 +45,10 @@ impl Command {
         })?;
 
         let root_oid = tree.oid.unwrap();
-        let commit = Commit::new("author".to_string(), root_oid, msg);
+        let commit = Commit::new(self.repo.get_head(), root_oid, msg);
         let commit_oid = self.repo.store(&commit)?;
+
+        repo.update_head(commit_oid)
 
         let result = format!("commit is stored and id is {}", commit_oid.into_string());
         Ok(result)

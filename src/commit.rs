@@ -1,16 +1,16 @@
 use crate::prelude::*;
 
 pub struct Commit {
-    author: String,
+    parent: Option<Oid>,
+    root_tree: Oid,
     message: String,
-    root_oid: Oid,
 }
 
 impl Commit {
-    pub fn new(author: String, root_oid: Oid, message: String) -> Self {
+    pub fn new(parent: Option<Oid>, root_tree: Oid, message: String) -> Self {
         Self {
-            author,
-            root_oid,
+            parent,
+            root_tree,
             message,
         }
     }
@@ -18,6 +18,15 @@ impl Commit {
 
 impl Objectify for Commit {
     fn objectify(&self) -> String {
-        format!("{}\n{}\n{}", self.author, self.root_oid.into_string(), self.message)
+        let parent = match &self.parent {
+            Some(oid) => oid.into_string(),
+            None => "".to_string()
+        };
+
+        vec![
+            parent,
+            self.root_tree.into_string(),
+            self.message.clone()
+        ].join("\n")
     }
 }
