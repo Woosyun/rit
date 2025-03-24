@@ -1,4 +1,14 @@
-use crate::prelude::*;
+pub mod tree;
+pub use tree::*;
+
+pub mod blob;
+pub use blob::*;
+
+pub mod stat;
+pub use stat::*;
+
+pub mod lockfile;
+
 use std::{
     path::{PathBuf, Path},
     io,
@@ -50,10 +60,12 @@ impl Workspace {
         Ok(files)
     }
 
+    /*
     pub fn read_to_blob(&self, file: &Path) -> io::Result<Blob> {
         let content = fs::read_to_string(file)?;
         Ok(Blob::new(content))
     }
+    */
 
     pub fn ancestors(&self, path: &Path) -> io::Result<Vec<PathBuf>> {
         let root = self.path.clone();

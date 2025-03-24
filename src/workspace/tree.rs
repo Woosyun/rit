@@ -1,0 +1,58 @@
+use std::{
+    io,
+    path::PathBuf,
+    collections::HashMap,
+};
+use crate::repository::database;
+
+enum Entry {
+    Tree(Tree),
+    Entry(database::Entry),
+}
+pub struct Tree{
+    name: String,
+    oid: Option<database::Oid>,
+    entries: HashMap<String, Entry>,
+}
+impl Tree {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            oid: None,
+            entries: HashMap::new(),
+        }
+    }
+
+    pub fn add_entry(&mut self, mut ancestors: Vec<PathBuf>, entry: database::Entry) {
+        let file_name = ancestors.pop().unwrap()
+            .file_name().unwrap()
+            .to_str().unwrap()
+            .to_string();
+
+        if ancestors.is_empty() {
+            let _ = self.entries.insert(file_name, Entry::Entry(entry));
+            return;
+        }
+
+        if let Some(tree) = self.entries.get_mut(&file_name) {
+            if let Entry::Tree(tree) = tree {
+                tree.add_entry(ancestors, entry);
+            }
+        } else {
+            let mut tree = Tree::new(file_name.clone());
+            tree.add_entry(ancestors, entry);
+            self.entries.insert(file_name, Entry::Tree(tree));
+        }
+    }
+
+    pub fn traverse_mut<F: Fn(&mut Tree) -> io::Result<()> + Copy>(&mut self, f: F) -> io::Result<()> {
+        for (_, entry) in self.entries.iter_mut() {
+            if let Entry::Tree(tree) = entry {
+                let _ = tree.traverse_mut(f)?;
+            }
+        }
+
+        f(self)
+    }
+}
+
