@@ -1,9 +1,9 @@
-use std::{
-    path::PathBuf,
+use std::path::PathBuf;
+use crate::{
+    repository::refs,
+    workspace::lockfile,
     fs,
-    io,
 };
-use crate::repository::refs;
 
 const HEAD: &str = "HEAD";
 
@@ -20,7 +20,7 @@ impl Head {
         }
     }
 
-    pub fn get(&self) -> io::Result<Option<String>> {
+    pub fn read(&self) -> crate::Result<Option<String>> {
         if !self.path.exists() {
             return Ok(None);
         }
@@ -29,10 +29,9 @@ impl Head {
 
         Ok(Some(content))
     }
-    // todo: use lock file
-    pub fn set(&self, branch: &str) -> io::Result<()> {
-        let content = refs::REFS.to_owned() + refs::HEADS + branch;
-        let _ = fs::write(&self.path, content)?;
+    pub fn write(&self, branch: &str) -> crate::Result<()> {
+        let content = refs::REFS.to_owned() + refs::HEADS;
+        lockfile::write(&self.path, branch, &content)?;
 
         Ok(())
     }

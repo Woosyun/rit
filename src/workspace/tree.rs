@@ -1,23 +1,20 @@
 use std::{
-    io,
     path::PathBuf,
     collections::HashMap,
 };
 use crate::repository::database;
 
-enum Entry {
+pub enum Entry {
     Tree(Tree),
     Entry(database::Entry),
 }
 pub struct Tree{
-    name: String,
-    oid: Option<database::Oid>,
-    entries: HashMap<String, Entry>,
+    pub oid: Option<database::Oid>,
+    pub entries: HashMap<String, Entry>,
 }
 impl Tree {
-    pub fn new(name: String) -> Self {
+    pub fn new() -> Self {
         Self {
-            name,
             oid: None,
             entries: HashMap::new(),
         }
@@ -39,13 +36,16 @@ impl Tree {
                 tree.add_entry(ancestors, entry);
             }
         } else {
-            let mut tree = Tree::new(file_name.clone());
+            let mut tree = Tree::new();
             tree.add_entry(ancestors, entry);
             self.entries.insert(file_name, Entry::Tree(tree));
         }
     }
 
-    pub fn traverse_mut<F: Fn(&mut Tree) -> io::Result<()> + Copy>(&mut self, f: F) -> io::Result<()> {
+    // depending on the return type of traverse function,
+    // Tree might not needs to store oid, name, or other informations
+    // those needed to create entry, of database::Tree.
+    pub fn traverse_mut<F: Fn(&mut Tree) -> crate::Result<()> + Copy>(&mut self, f: F) -> crate::Result<()> {
         for (_, entry) in self.entries.iter_mut() {
             if let Entry::Tree(tree) = entry {
                 let _ = tree.traverse_mut(f)?;
@@ -55,4 +55,3 @@ impl Tree {
         f(self)
     }
 }
-

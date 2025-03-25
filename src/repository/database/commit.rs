@@ -1,16 +1,21 @@
-use crate::prelude::*;
+use crate::{
+    repository::database::Oid,
+};
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize)]
 pub struct Commit {
-    parent_oid: Option<Oid>,
-    root_oid: Oid,
+    parent: Option<Oid>,
+    root_tree: Oid,
     message: String,
+    //commiter: String,
 }
 
 impl Commit {
-    pub fn new(parent_oid: Option<Oid>, root_oid: Oid, message: String) -> Self {
+    pub fn new(parent: Option<Oid>, root_tree: Oid, message: String) -> Self {
         Self {
-            parent_oid,
-            root_oid,
+            parent,
+            root_tree,
             message,
         }
     }

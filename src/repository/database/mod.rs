@@ -10,14 +10,16 @@ pub use entry::*;
 pub mod oid;
 pub use oid::*;
 
-use std::{
-    io,
+pub mod commit;
+pub use commit::*;
+
+use std::path::PathBuf;
+use crate::{
+    workspace::lockfile,
+    utils,
     fs,
-    path::PathBuf,
 };
-use serde::{Serialize, Deserialize};
-use serde_json;
-use crate::workspace::lockfile;
+use serde::Serialize;
 
 pub const OBJECTS: &str = "objects";
 
@@ -25,12 +27,12 @@ pub struct Database {
     path: PathBuf
 }
 impl Database {
-    pub fn build(repo: PathBuf) -> io::Result<Self> {
+    pub fn build(repo: PathBuf) -> crate::Result<Self> {
         let mut path = repo;
         path.push(OBJECTS);
 
         if !path.exists() {
-            return Err(io::Error::new(io::ErrorKind::NotFound, ".rit/objects not found"));
+            return Err(crate::Error::Repository(".rit/objects not found".into()));
         }
 
         let db = Self {
@@ -38,37 +40,34 @@ impl Database {
         };
         Ok(db)
     }
-    pub fn store(&self, oid: &Oid, content: String) -> io::Result<()> {
+    pub fn init(repo: PathBuf) -> crate::Result<()> {
+        let mut path = repo;
+        path.push(OBJECTS);
+        fs::create_dir(&path)
+    }
+
+    pub fn store<O: Serialize>(&self, o: &O) -> crate::Result<Oid> {
+        let content = utils::decode(o)
+            .map_err(|e| {
+                let msg = format!("cannot decode this object: {}", e);
+                crate::Error::Repository(msg)
+            })?;
+        let oid = Oid::build(&content);
+
         let mut path = self.path.clone();
         let (dir, file) = oid.split();
-        path.push(OBJECTS);
         path.push(dir);
-        fs::create_dir(&path)?;
-
-        path.push(file);
-
-        if path.exists() {
-            return Ok(());
+        if !path.exists() {
+            fs::create_dir(&path)?;
         }
-        
-        lockfile::store(&path, content)?;
-        Ok(())
-    }
-}
 
-pub trait Objectify<'a>: Serialize + Deserialize<'a>{
-    fn get_oid(content: &str) -> io::Result<oid::Oid> {
-        let oid = oid::Oid::build(&content);
+        let mut tmp = path.clone();
+        tmp.push(&file);
+        if tmp.exists() {
+            return Ok(oid);
+        }
+
+        lockfile::write(&path, &file, &content)?;
         Ok(oid)
-    }
-
-    fn decode(&self) -> io::Result<String> {
-         serde_json::to_string(self)
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "serialization failed"))
-    }
-
-    fn encode<O: Deserialize<'a>>(content: &'a str) -> io::Result<O> {
-        serde_json::from_str(content)
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "deserialization failed"))
     }
 }

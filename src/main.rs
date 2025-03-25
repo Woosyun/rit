@@ -1,4 +1,4 @@
-use rit::prelude::*;
+use rit::commands::*;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -8,9 +8,9 @@ fn main() {
 
     let cwd = std::env::current_dir()
         .expect("cannot get current directory");
-    let result = match args[1].as_str() {
+    match args[1].as_str() {
         "commit" => {
-            let command = Command::build(cwd).expect("cannot build Command object");
+            let command = Commit::build(cwd).expect("cannot start commit");
 
             if args.len() != 3 {
                 println!("commit message is missing");
@@ -18,18 +18,20 @@ fn main() {
             }
 
             let message = args[2].clone();
-            command.commit(message)
-                .expect("cannot execute commit")
+            match command.execute(message) {
+                Ok(_) => println!("commit successed"),
+                Err(e) => eprintln!("error: {:#?}", e),
+            };
         },
         "init" => {
-            let result = Command::init(cwd)
-                .expect("cannot init");
-            result.to_string()
+            let cmd = Init::build(cwd).expect("canoot start init");
+            match cmd.execute() {
+                Ok(_) => println!("init successed"),
+                Err(e) => eprintln!("error: {:#?}", e),
+            };
         },
         _ => {
-            "Unsupported command".to_string()
+            eprintln!("Unsupported command");
         }
-    };
-
-    println!("result: \n{}", result);
+    }
 }

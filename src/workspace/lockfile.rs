@@ -1,16 +1,15 @@
-use std::{
-    path::Path,
-    fs,
-    io,
-};
+use std::path::Path;
+use crate::fs;
 
-pub fn store(path: &Path, content: String) -> io::Result<()> {
-    let mut lockfile = path.to_path_buf();
+pub fn write(dir: &Path, file: &str, content: &str) -> crate::Result<()> {
+    let mut lockfile = dir.to_path_buf();
     lockfile.push("lock");
 
     let _ = fs::write(&lockfile, content)?;
-    let _ = fs::rename(&lockfile, path)?;
+
+    let mut target = dir.to_path_buf();
+    target.push(file);
+    let _ = fs::rename(&lockfile, &target)?;
 
     Ok(())
 }
-
