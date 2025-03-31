@@ -30,6 +30,13 @@ fn main() {
                 Err(e) => eprintln!("error: {:#?}", e),
             };
         },
+        "status" => {
+            let mut cmd = Status::build(cwd).expect("cannot start status");
+            cmd.execute()
+                .expect("cannot scan");
+            let output = cmd.output();
+            println!("{}", output);
+        },
         _ => {
             eprintln!("Unsupported command");
         }

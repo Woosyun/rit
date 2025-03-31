@@ -3,3 +3,6 @@ pub use commit::*;
 
 pub mod init;
 pub use init::*;
+
+pub mod status;
+pub use status::*;

@@ -1,40 +1,46 @@
-use crate::{
-    repository::{Repository, database},
-    workspace::{self, Workspace},
-};
+use crate::{repository, workspace};
 use std::path::PathBuf;
 
 pub struct Commit {
-    repo: Repository,
-    ws: Workspace
+    ws: workspace::Workspace,
+    db: repository::Database,
+    head: repository::Head,
+    refs: repository::Refs,
+    ignore: repository::Ignore
 }
 impl Commit {
     pub fn build(cwd: PathBuf) -> crate::Result<Self> {
-        let ws = Workspace::build(cwd)?;
-        let repo = Repository::build(&ws)?;
+        let ws = workspace::Workspace::build(cwd)?;
+        let repo = repository::Repository::build(&ws)?;
+        let db = repo.get_database()?;
+        let head = repo.get_head();
+        let refs = repo.get_refs();
+        let ignore = repo.get_ignore()?;
         let commit = Self {
-            repo,
-            ws
+            ws,
+            db,
+            head,
+            refs,
+            ignore
         };
 
         Ok(commit)
     }
 
-    pub fn execute(&self, msg: String) -> crate::Result<&'static str> {
-        let db = self.repo.get_database()?;
-
-
+    pub fn execute(&self, msg: String) -> crate::Result<()> {
         let mut tree = workspace::Tree::new();
         for file in self.ws.list_files(None)? {
             let blob = self.ws.read_to_blob(&file)?;
+            let oid = self.db.store(&blob)?;
+
             let stat = self.ws.read_stat(&file)?;
-            let oid = db.store(&blob)?;
-            let name = file.file_name().expect("path terminated with ..")
-                .to_str().expect("file name is not valid unicode")
-                .to_string();
-            let entry = database::Entry::from_blob(stat, oid, name);
-            let ancestors = self.ws.ancestors(&file)?;
-            tree.add_entry(ancestors, entry);
+            let file_name = self.ws.get_file_name(&file)?;
+
+            if !self.ignore.is_ignored(&file_name) {
+                let entry = repository::Entry::from_blob(stat, oid, file_name);
+                let mut ancestors = self.ws.get_ancestors(&file)?;
+                tree.add_entry(&mut ancestors, entry);
+            }
         }
 
         //store tree recursively
@@ -47,40 +53,39 @@ impl Commit {
                     match entry {
                         workspace::Entry::Tree(tree) => {
                             let oid = tree.oid.as_ref().expect("tree didn't get oid");
-                            let entry = database::Entry::from_tree(oid.clone(), name.clone());
+                            let entry = repository::Entry::from_tree(oid.clone(), name.clone());
                             entry
                         },
                         workspace::Entry::Entry(entry) => entry.clone()
                     }
                 })
                 .collect::<Vec<_>>();
-            let db_tree = database::Tree::new(entries);
-            let oid = db.store(&db_tree)?;
+            let db_tree = repository::Tree::new(entries);
+            let oid = self.db.store(&db_tree)?;
             tree.oid = Some(oid);
 
             Ok(())
         };
         tree.traverse_mut(handler)?;
 
-        let root_tree_oid = tree.oid.expect("commit didn't work well");
+        let root_tree_oid = tree.oid.unwrap();
         //get previous head
-        let head = self.repo.get_head();
-        let refs = self.repo.get_refs();
-        let previous_commit_oid = if let Some(branch) = head.read()? {
-            Some(refs.read(&branch)?)
+        let previous_commit_oid = if let Some(branch) = self.head.read()? {
+            Some(self.refs.read(&branch)?)
         } else {
             None
         };
 
-        let commit = database::Commit::new(previous_commit_oid, root_tree_oid, msg);
-        let new_head_oid = db.store(&commit)?;
-        if let Some(branch) = head.read()? {
-            refs.write(&branch, &new_head_oid)?;
-            head.write(&branch)?;
+        let commit = repository::Commit::new(previous_commit_oid, root_tree_oid, msg);
+        let new_head_oid = self.db.store(&commit)?;
+        //todo: change this part to use checkout command
+        if let Some(branch) = self.head.read()? {
+            self.refs.write(&branch, &new_head_oid)?;
         } else {
-            refs.init(&new_head_oid)?;
+            let main = self.refs.init(&new_head_oid)?;
+            self.head.write(main)?;
         }
-
-        Ok("commit worked")
+        
+        Ok(())
     }
 }

@@ -1,15 +1,17 @@
 use std::{
-    path::PathBuf,
     collections::HashMap,
 };
-use crate::repository::database;
+use serde::{Serialize, Deserialize};
+use crate::repository;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Entry {
     Tree(Tree),
-    Entry(database::Entry),
+    Entry(repository::Entry),
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tree{
-    pub oid: Option<database::Oid>,
+    pub oid: Option<repository::Oid>,
     pub entries: HashMap<String, Entry>,
 }
 impl Tree {
@@ -20,11 +22,8 @@ impl Tree {
         }
     }
 
-    pub fn add_entry(&mut self, mut ancestors: Vec<PathBuf>, entry: database::Entry) {
-        let file_name = ancestors.pop().unwrap()
-            .file_name().unwrap()
-            .to_str().unwrap()
-            .to_string();
+    pub fn add_entry(&mut self, ancestors: &mut Vec<String>, entry: repository::Entry) {
+        let file_name = ancestors.pop().unwrap();
 
         if ancestors.is_empty() {
             let _ = self.entries.insert(file_name, Entry::Entry(entry));
@@ -55,3 +54,4 @@ impl Tree {
         f(self)
     }
 }
+

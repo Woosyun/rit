@@ -10,10 +10,11 @@ use std::{
     path::{PathBuf, Path},
 };
 use crate::{
-    repository::database,
+    repository,
     fs,
 };
 
+#[derive(PartialEq, Clone, Debug)]
 pub struct Workspace {
     pub path: PathBuf,
 }
@@ -59,25 +60,57 @@ impl Workspace {
         Ok(files)
     }
 
+    pub fn read_dir(&self, path: &Path) -> crate::Result<Vec<PathBuf>> {
+        let mut paths = vec![];
+        for entry in fs::read_dir(path)? {
+            if let Ok(entry) = entry {
+                paths.push(entry.path());
+            }
+        }
+        Ok(paths)
+    }
+
     pub fn read_stat(&self, file: &Path) -> crate::Result<Stat> {
-        let stat = Stat::from_metadata(fs::metadata(file)?);
+        let stat = Stat::from_metadata(&fs::metadata(file)?);
         Ok(stat)
     }
     
-    pub fn read_to_blob(&self, file: &Path) -> crate::Result<database::Blob> {
+    pub fn read_to_blob(&self, file: &Path) -> crate::Result<repository::Blob> {
         let content = fs::read_to_string(file)?;
-        let blob = database::Blob::new(content);
+        let blob = repository::Blob::new(content);
         Ok(blob)
     }
 
-    pub fn ancestors(&self, path: &Path) -> crate::Result<Vec<PathBuf>> {
-        let root = self.path.clone();
-        let rel = path.strip_prefix(root)
-            .map_err(|e| crate::Error::Workspace(e.to_string()))?;
-        let mut ancestors = rel.ancestors()
-            .map(|p| p.to_path_buf())
+    // path should not be relative path
+    pub fn get_ancestors(&self, path: &Path) -> crate::Result<Vec<String>> {
+        let relative_path = self.get_relative_path(path)?;
+        let mut ancestors = relative_path.ancestors()
             .collect::<Vec<_>>();
-        let _ = ancestors.pop();
+        ancestors.pop();
+        let ancestors = ancestors
+            .into_iter()
+            .map(|p| self.get_file_name(p))
+            .collect::<crate::Result<Vec<_>>>()?;
         Ok(ancestors)
+    }
+
+    pub fn get_file_name(&self, path: &Path) -> crate::Result<String> {
+        match path.file_name() {
+            Some(file_name) => {
+                let file_name = file_name
+                    .to_str().unwrap()
+                    .to_string();
+                Ok(file_name)
+            },
+            None => {
+                let f = format!("{:?}: cannot get file name", path);
+                Err(crate::Error::Workspace(f))
+            }
+        }
+    }
+    pub fn get_relative_path(&self, path: &Path) -> crate::Result<PathBuf> {
+        path.strip_prefix(&self.path)
+            .map(|p| p.to_path_buf())
+            .map_err(|e| crate::Error::Workspace(e.to_string()))
     }
 }

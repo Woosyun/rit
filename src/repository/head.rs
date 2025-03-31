@@ -1,19 +1,20 @@
 use std::path::PathBuf;
 use crate::{
-    repository::refs,
     workspace::lockfile,
     fs,
 };
 
-const HEAD: &str = "HEAD";
-
+#[derive(PartialEq, Clone, Debug)]
 pub struct Head {
     path: PathBuf,
 }
 impl Head {
+    pub fn name() -> &'static str {
+        "HEAD"
+    }
     pub fn new(repo: PathBuf) -> Self {
         let mut path = repo;
-        path.push(HEAD);
+        path.push(Head::name());
         
         Self {
             path
@@ -26,12 +27,10 @@ impl Head {
         }
 
         let content = fs::read_to_string(&self.path)?;
-
         Ok(Some(content))
     }
     pub fn write(&self, branch: &str) -> crate::Result<()> {
-        let content = refs::REFS.to_owned() + refs::HEADS;
-        lockfile::write(&self.path, branch, &content)?;
+        lockfile::write(&self.path, branch)?;
 
         Ok(())
     }

@@ -16,8 +16,7 @@ impl Init {
         Ok(init)
     }
 
-    pub fn execute(&self) -> crate::Result<&'static str> {
-        Repository::init(&self.ws)?;
-        Ok("repository initialized")
+    pub fn execute(&self) -> crate::Result<()> {
+        Repository::init(&self.ws)
     }
 }

@@ -1,7 +1,7 @@
 use sha2::{Sha256, Digest};
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Oid([u8; 32]);
 impl Oid {
     pub fn build(content: &str) -> Self {
