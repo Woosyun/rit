@@ -35,7 +35,6 @@ impl Refs {
 
     pub fn read(&self, branch: &str) -> crate::Result<Oid> {
         let mut path = self.path.clone();
-        path.push(Refs::name());
         path.push(Refs::local());
         path.push(branch);
         if !path.exists() {
@@ -54,7 +53,6 @@ impl Refs {
 
     pub fn write(&self, branch: &str, oid: &Oid) -> crate::Result<()> {
         let mut path = self.path.clone();
-        path.push(Refs::name());
         path.push(Refs::local());
         fs::create_dir_all(&path)?;
         path.push(branch);

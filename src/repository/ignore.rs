@@ -9,8 +9,7 @@ use crate::{
     repository::Repository,
 };
 
-#[derive(PartialEq, Clone, Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Ignore(HashSet<String>);
 impl Ignore {
     pub fn name() -> &'static str {

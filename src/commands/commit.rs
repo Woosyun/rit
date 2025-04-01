@@ -69,7 +69,6 @@ impl Commit {
         tree.traverse_mut(handler)?;
 
         let root_tree_oid = tree.oid.unwrap();
-        //get previous head
         let previous_commit_oid = if let Some(branch) = self.head.read()? {
             Some(self.refs.read(&branch)?)
         } else {
@@ -78,6 +77,7 @@ impl Commit {
 
         let commit = repository::Commit::new(previous_commit_oid, root_tree_oid, msg);
         let new_head_oid = self.db.store(&commit)?;
+        
         //todo: change this part to use checkout command
         if let Some(branch) = self.head.read()? {
             self.refs.write(&branch, &new_head_oid)?;

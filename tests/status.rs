@@ -2,11 +2,12 @@ mod works;
 
 use rit::commands::*;
 use tempdir::TempDir;
-use std::path::Path;
 
 #[test]
-pub fn status() {
-    let tempdir = TempDir::new("commit-once").unwrap();
+pub fn work1() {
+    use std::path::Path;
+
+    let tempdir = TempDir::new("first commit").unwrap();
     let cwd = tempdir.path();
 
     let init = Init::build(cwd.to_path_buf()).expect("cannot build command");
@@ -14,7 +15,6 @@ pub fn status() {
 
     works::work1::run(cwd.to_path_buf()).unwrap();
 
-    //check status for work1. hello.txt & hello/world.txt
     let mut status1 = Status::build(cwd.to_path_buf()).expect("cannot build status");
     let mut status1_right = status1.clone();
     status1.execute().expect("cannot run status");

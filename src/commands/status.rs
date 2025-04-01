@@ -146,25 +146,29 @@ impl Status {
             })
             .collect::<HashMap<PathBuf, &repository::Entry>>();
 
-        //todo: isn't file absolute path?
         for file in self.ws.read_dir(path)? {
             if let Some(entry) = old.get(&file) {
                 let _ = visited.insert(file.clone(), true);
                 if entry.is_dir() {
                     let sub_tree: repository::Tree = self.db.retrieve(entry.oid())?;
-                    self.compare_tree_recursively(sub_tree, &file)?;
+                    if self.is_ignored(&file)? {
+                        self.compare_tree_recursively(sub_tree, &file)?;
+                    }
                 } else if file.is_dir() {
                     self.deleted(&file)?;
                     self.added(&file)?;
                 } else {
-                    //db::entry and ws::entry both are file
                     self.compare_blob(entry, &file)?;
                 }
             } else {
                 self.added(&file)?;
             }
         }
-        //todo: implement logic for deleted entries
+        for (path, _) in old {
+            if !visited.get(&path).unwrap() {
+                self.deleted(&path)?;
+            }
+        }
 
         Ok(())
     }
