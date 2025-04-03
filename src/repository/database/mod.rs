@@ -14,7 +14,10 @@ pub mod commit;
 pub use commit::*;
 
 
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    collections::HashSet,
+};
 use crate::{
     workspace::lockfile,
     utils,
@@ -93,5 +96,11 @@ impl Database {
             .map_err(|s| crate::Error::Repository(s))?;
         let oid = Oid::build(&content);
         Ok(oid)
+    }
+
+    //todo: implement
+    #[allow(unused)]
+    pub fn list_files(&self, tree: Tree, files: &mut HashSet<PathBuf>) -> crate::Result<()> {
+        Ok(())
     }
 }

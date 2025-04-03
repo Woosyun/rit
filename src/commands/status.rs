@@ -39,6 +39,10 @@ impl Status {
         Ok(status)
     }
 
+    pub fn is_clean(&self) -> bool {
+        self.added.is_empty() && self.modified.is_empty() && self.deleted.is_empty()
+    }
+
     pub fn output(&self) -> String {
         let mut output = String::new();
 

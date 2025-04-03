@@ -1,5 +1,6 @@
 pub mod workspace;
 pub mod repository;
+pub mod revision;
 pub mod utils;
 pub mod commands;
 

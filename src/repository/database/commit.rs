@@ -22,4 +22,7 @@ impl Commit {
     pub fn root(&self) -> &Oid {
         &self.root
     }
+    pub fn parent(&self) -> &Option<Oid> {
+        &self.parent
+    }
 }

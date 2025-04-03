@@ -31,6 +31,7 @@ impl Workspace {
         Ok(ws)
     }
 
+    //todo: delete this function. make models as simple as possible
     pub fn list_files(&self, path: Option<PathBuf>) -> crate::Result<Vec<PathBuf>> {
         let path = match path {
             Some(path) => path,
