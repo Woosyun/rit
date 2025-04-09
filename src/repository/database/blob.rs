@@ -6,4 +6,7 @@ impl Blob {
     pub fn new(content: String) -> Self {
         Self (content)
     }
+    pub fn content(&self) -> &str {
+        &self.0
+    }
 }

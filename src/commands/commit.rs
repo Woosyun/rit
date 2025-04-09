@@ -27,7 +27,7 @@ impl Commit {
     pub fn execute(&self, message: String) -> crate::Result<()> {
         // 1. read revisions
         let parent = self.repo.get_head()?;
-        let prev_revision = Revision::build(self.repo.clone(), &parent)?;
+        let prev_revision = Revision::build(self.repo.clone(), parent.as_ref())?;
         let prev_rev = prev_revision.into_rev()?;
         
         let mut curr_rev = self.ws.into_rev()?;

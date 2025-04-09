@@ -43,9 +43,9 @@ impl Workspace {
         &self.path
     }
 
-    pub fn get_ancestors(&self, path: &Path) -> crate::Result<Vec<String>> {
+    pub fn get_ancestors(&self, index: &Path) -> crate::Result<Vec<String>> {
         //let relative_path = self.get_relative_path(path)?;
-        let mut ancestors = path.ancestors()
+        let mut ancestors = index.ancestors()
             .collect::<Vec<_>>();
         ancestors.pop();
         let ancestors = ancestors

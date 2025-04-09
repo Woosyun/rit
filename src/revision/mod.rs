@@ -17,8 +17,8 @@ pub struct Revision {
     commit: Option<repository::Commit>,
 }
 impl Revision {
-    pub fn build(repo: Repository, oid: &Option<Oid>) -> crate::Result<Self> {
-        let commit = match oid.as_ref() {
+    pub fn build(repo: Repository, oid: Option<&Oid>) -> crate::Result<Self> {
+        let commit = match oid {
             Some(oid) => Some(repo.db.retrieve(oid)?),
             None => None
         };

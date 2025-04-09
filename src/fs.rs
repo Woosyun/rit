@@ -19,6 +19,14 @@ pub fn write(path: &Path, content: &str) -> crate::Result<()> {
         })
 }
 
+pub fn remove_file(path: &Path) -> crate::Result<()> {
+    fs::remove_file(path)
+        .map_err(|e| {
+            let f = format!("{:?}: {}", path, e);
+            crate::Error::Io(f)
+        })
+}
+
 pub fn read_dir(path: &Path) -> crate::Result<fs::ReadDir> {
     fs::read_dir(path)
         .map_err(|e| {

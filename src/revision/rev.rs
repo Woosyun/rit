@@ -18,12 +18,6 @@ impl Rev {
         Self(rev)
     }
 
-    pub fn insert(&mut self, idx: PathBuf, stat: Box<dyn Stat>) {
-        let _ = self.0.insert(idx, stat);
-    }
-    pub fn remove(&mut self, idx: &Path) -> Option<Box<dyn Stat>> {
-        self.0.remove(idx)
-    }
     pub fn get_mut(&mut self, idx: &Path) -> Option<&mut Box<dyn Stat>> {
         self.0.get_mut(idx)
     }
