@@ -1,36 +1,30 @@
 use std::path::PathBuf;
-use crate::{
-    workspace::lockfile,
-    fs,
-};
+use crate::fs;
+use serde::{Serialize, Deserialize};
 
-#[derive(PartialEq, Clone, Debug)]
+const HEAD: &str = "HEAD";
+
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Head {
     path: PathBuf,
 }
 impl Head {
-    pub fn name() -> &'static str {
-        "HEAD"
-    }
-    pub fn new(repo: PathBuf) -> Self {
-        let mut path = repo;
-        path.push(Head::name());
-        
+    pub fn build(refs: PathBuf) -> Self {
+        let mut path = refs;
+        path.push(HEAD);
         Self {
             path
         }
     }
-
-    pub fn read(&self) -> crate::Result<Option<String>> {
+    pub fn get(&self) -> crate::Result<Option<String>> {
         if !self.path.exists() {
             return Ok(None);
         }
-
-        let content = fs::read_to_string(&self.path)?;
-        Ok(Some(content))
+        let branch = fs::read_to_string(&self.path)?;
+        Ok(Some(branch))
     }
-    pub fn write(&self, branch: &str) -> crate::Result<()> {
-        lockfile::write(&self.path, branch)?;
+    pub fn set(&self, branch: &str) -> crate::Result<()> {
+        fs::lock_write(&self.path, branch)?;
 
         Ok(())
     }

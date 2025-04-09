@@ -1,10 +1,58 @@
-use crate::repository::{Mtime, Oid};
+pub mod rev;
+pub use rev::*;
 
-pub trait Entry {
-    fn mtime(&self) -> Mtime;
-    fn oid(&self) -> Oid;
+use crate::{
+    repository::{Repository, self, Oid},
+    workspace::Stat,
+};
+use std::{
+    collections::HashMap,
+    path::{PathBuf, Path},
+};
+use serde::{Serialize, Deserialize};
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Revision {
+    repo: Repository,
+    commit: Option<repository::Commit>,
+}
+impl Revision {
+    pub fn build(repo: Repository, oid: &Option<Oid>) -> crate::Result<Self> {
+        let commit = match oid.as_ref() {
+            Some(oid) => Some(repo.db.retrieve(oid)?),
+            None => None
+        };
+        Ok(Self {
+            repo,
+            commit,
+        })
+    }
+    fn list_entries(&self, base: &Path, tree: &repository::Tree, result: &mut HashMap<PathBuf, Box<dyn Stat>>) -> crate::Result<()> {
+        for entry in tree.entries() {
+            let mut new_base = base.to_path_buf();
+            new_base.push(entry.name());
+
+            if entry.is_dir() {
+                let sub_tree = self.repo.db.retrieve(entry.oid())?;
+                self.list_entries(&new_base, &sub_tree, result)?;
+            } else {
+                let _ = result.insert(new_base, Box::new(entry.clone()));
+            }
+        }
+
+        Ok(())
+    }
 }
 
-pub struct Revision {
-    fn 
+impl IntoRev for Revision {
+    fn into_rev(&self) -> crate::Result<Rev> {
+        let mut rev = HashMap::new();
+        if let Some(target_commit) = &self.commit {
+            let root = &target_commit.root();
+            let root_tree = self.repo.db.retrieve(root)?;
+            self.list_entries(Path::new(""), &root_tree, &mut rev)?;
+        }
+        let rev = Rev::new(rev);
+        Ok(rev)
+    }
 }

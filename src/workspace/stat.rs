@@ -1,48 +1,33 @@
-use filetime::FileTime;
-use std::fs::Metadata;
-use serde::{Serialize, Deserialize};
-use crate::repository::{Mtime, Mode};
+use crate::repository::Oid;
+//use std::path::PathBuf;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Stat {
-    pub mode: Mode,
-    // mtime represents seconds from unix epoch (is this os agnostic?)
-    pub mtime: Mtime,
-}
-impl Stat {
-    pub fn from_metadata(metadata: &Metadata) -> Self {
-        let mode = if metadata.is_file() {
-            if metadata.permissions().readonly() {
-                Stat::readonly_file_mode()
-            } else {
-                Stat::executable_file_mode()
-            }
-        } else {
-            Stat::directory_mode()
-        };
+pub type Mode = u32;
+pub type Mtime = i64;
+pub type Name = String;
 
-        let mtime = FileTime::from_last_modification_time(metadata)
-            .unix_seconds();
-        Self {
-            mode,
-            mtime,
-        }
-    }
+pub const DIRECTORY_MODE: Mode = 0o40000;
+pub const READONLY_FILE_MODE: Mode = 0o100644;
+pub const EXECUTABLE_FILE_MODE: Mode = 0o100755;
 
-    pub fn directory_mode() -> Mode {
-        0o40000
-    }
-    pub fn readonly_file_mode() -> Mode {
-        0o100644
-    }
-    pub fn executable_file_mode() -> Mode {
-        0o100755
-    }
-    pub fn is_dir(&self) -> bool {
-        if self.mode == Stat::directory_mode() {
-            true
-        } else {
-            false
-        }
+pub trait Stat {
+    fn mtime(&self) -> Mtime;
+    fn mode(&self) -> Mode;
+    fn oid(&self) -> crate::Result<&Oid>;
+    fn set_oid(&mut self, oid: Oid);
+    fn name(&self) -> &Name;
+
+    //todo: remove this cause don't need anymore.
+    //fn clone_box(&self) -> Box<dyn Stat>;
+
+    fn is_dir(&self) -> bool {
+        self.mode() == DIRECTORY_MODE
     }
 }
+
+/*
+impl Clone for Box<dyn Stat> {
+    fn clone(&self) -> Box<dyn Stat> {
+        self.clone_box()
+    }
+}
+*/

@@ -1,65 +1,74 @@
 pub mod head;
-pub use head::*;
+use head::*;
 
 pub mod refs;
-pub use refs::*;
+use refs::*;
 
 pub mod database;
 pub use database::*;
 
-pub mod ignore;
-pub use ignore::*;
-
-
-use std::path::PathBuf;
 use crate::{
     workspace::Workspace,
     fs,
 };
+use serde::{Serialize, Deserialize};
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Repository {
-    path: PathBuf,
+    pub db: Database,
+    pub head: Head,
+    pub refs: Refs,
 }
 impl Repository {
     pub fn name() -> &'static str {
         ".rit"
     }
     pub fn build(ws: &Workspace) -> crate::Result<Self> {
-        let mut path = ws.path.clone();
+        let mut path = ws.path().to_path_buf();
         path.push(Repository::name());
-
         if !path.exists() {
             return Err(crate::Error::Repository(".rit folder not found".into()));
         }
 
+        let db = Database::build(path.clone())?;
+        let head = Head::build(path.clone());
+        let refs = Refs::build(path.clone())?;
+
         let repo = Self {
-            path
+            db,
+            head,
+            refs,
         };
 
         Ok(repo)
     }
-
     pub fn init(ws: &Workspace) -> crate::Result<()> {
-        let mut repo = ws.path.clone();
+        let mut repo = ws.path().to_path_buf();
         repo.push(Repository::name());
         if !repo.exists() {
             fs::create_dir(&repo)?;
         }
 
-        Database::init(repo)
-    }
+        Database::init(repo.clone())?;
+        Refs::init(repo)?;
 
-    pub fn get_database(&self) -> crate::Result<Database> {
-        Database::build(self.path.clone())
+        Ok(())
     }
-    pub fn get_head(&self) -> Head {
-        Head::new(self.path.clone())
+    pub fn get_head(&self) -> crate::Result<Option<Oid>> {
+        if let Some(branch) = self.head.get()? {
+            let oid = self.refs.get(&branch)?;
+            Ok(Some(oid))
+        } else {
+            Ok(None)
+        }
     }
-    pub fn get_refs(&self) -> Refs {
-        Refs::new(self.path.clone())
-    }
-    pub fn get_ignore(&self) -> crate::Result<Ignore> {
-        Ignore::build(self.path.clone())
+    pub fn set_head(&self, oid: &Oid) -> crate::Result<()> {
+        if let Some(branch) = self.head.get()? {
+            self.refs.set(&branch, oid)?;
+        } else {
+            self.refs.set("main", oid)?;
+            self.head.set("main")?;
+        }
+        Ok(())
     }
 }

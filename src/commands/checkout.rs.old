@@ -11,8 +11,7 @@ pub struct Checkout {
 
 impl Checkout {
     pub fn build(cwd: PathBuf) -> crate::Result<Self> {
-        let mut status = Status::build(cwd.clone())?;
-        status.execute()?;
+        let status = Status::build(cwd.clone())?;
         if !status.is_clean() {
             return Err(crate::Error::Workspace("state of workspace is not clean".into()));
         }
@@ -34,23 +33,10 @@ impl Checkout {
             refs,
             current_position,
         };
-
         Ok(re)
     }
 
-    pub fn up(&mut self) -> crate::Result<Option<()>> {
-        let cur_commit: repository::Commit = self.db.retrieve(&self.current_position)?;
-
-        if let Some(parent) = cur_commit.parent() {
-            self.current_position = parent.clone();
-            Ok(Some(()))
-        } else {
-            Ok(None)
-        }
-    }
-
-    //todo: implement
-    pub fn apply(&self) -> crate::Result<()> {
-        Ok(())
+    pub fn execute(&self) -> crate::Result<()> {
+         
     }
 }

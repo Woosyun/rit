@@ -15,8 +15,8 @@ impl Ignore {
     pub fn name() -> &'static str {
         ".ignore"
     }
-    pub fn build(repo: PathBuf) -> crate::Result<Self> {
-        let mut path = repo;
+    pub fn build(workdir: PathBuf) -> crate::Result<Self> {
+        let mut path = workdir;
         path.push(Ignore::name());
         if !path.exists() {
             return Ok(Ignore::default());

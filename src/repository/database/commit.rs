@@ -3,7 +3,7 @@ use crate::{
 };
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Commit {
     parent: Option<Oid>,
     root: Oid,

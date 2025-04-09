@@ -3,7 +3,6 @@ use std::{
     path::Path,
 };
 
-
 pub fn read_to_string(path: &Path) -> crate::Result<String> {
     fs::read_to_string(path)
         .map_err(|e| {
@@ -57,4 +56,29 @@ pub fn rename(base: &Path, target: &Path) -> crate::Result<()> {
             let msg = format!("{:?}->{:?}: {}", base, target, e);
             crate::Error::Io(msg)
         })
+}
+
+pub fn get_file_name(path: &Path) -> crate::Result<String> {
+    match path.file_name() {
+        Some(file_name) => {
+            let file_name = file_name
+                .to_str().unwrap()
+                .to_string();
+            Ok(file_name)
+        },
+        None => {
+            let f = format!("{:?}: cannot get file name. Maybe file name termiantes with ..", path);
+            Err(crate::Error::Workspace(f))
+        }
+    }
+}
+
+pub fn lock_write(file: &Path, content: &str) -> crate::Result<()> {
+    let mut lockfile = file.to_path_buf();
+    lockfile.set_extension("lock");
+
+    write(&lockfile, content)?;
+    rename(&lockfile, file)?;
+
+    Ok(())
 }

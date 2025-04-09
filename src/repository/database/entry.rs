@@ -1,16 +1,20 @@
 use crate::{
     repository::Oid,
-    workspace::Stat,
+    workspace::stat::*,
 };
 use serde::{Serialize, Deserialize};
 
-pub type Mode = u32;
-pub type Mtime = i64;
 type Name = String;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone)]
 pub struct Entry(pub Mode, pub Mtime, pub Oid, pub Name);
 impl Entry {
+    pub fn build(stat: &dyn Stat) -> crate::Result<Self> {
+        let oid = stat.oid()?.clone();
+        let name = stat.name().to_string();
+        let result = Self(stat.mode(), stat.mtime(), oid, name);
+        Ok(result)
+    }
     pub fn mode(&self) -> Mode {
         self.0
     }
@@ -20,35 +24,33 @@ impl Entry {
     pub fn oid(&self) -> &Oid {
         &self.2
     }
+    pub fn set_oid(&mut self, oid: Oid) {
+        self.2 = oid;
+    }
     pub fn name(&self) -> &Name {
         &self.3
     }
-    pub fn from_blob(stat: Stat, oid: Oid, name: String) -> Self {
-        let mode = stat.mode;
-        let mtime = stat.mtime;
-        Self (
-            mode,
-            mtime,
-            oid,
-            name
-        )
-    }
+}
 
-    pub fn from_tree(oid: Oid, name: String) -> Self {
-        let mode = Stat::directory_mode();
-        let mtime = 0;
-        Self (
-            mode,
-            mtime,
-            oid,
-            name
-        )
+impl Stat for Entry {
+    fn mtime(&self) -> Mtime {
+        self.mtime()
     }
-    pub fn is_dir(&self) -> bool {
-        if self.mode() == Stat::directory_mode() {
-            true
-        } else {
-            false
-        }
+    fn mode(&self) -> Mode {
+        self.mode()
     }
+    fn oid(&self) -> crate::Result<&Oid> {
+        Ok(self.oid())
+    }
+    fn set_oid(&mut self, _oid: Oid) {
+        ()
+    }
+    fn name(&self) -> &Name {
+        self.name()
+    }
+    /*
+    fn clone_box(&self) -> Box<dyn Stat> {
+        Box::new(self.clone())
+    }
+    */
 }

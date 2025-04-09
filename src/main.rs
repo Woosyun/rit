@@ -31,11 +31,8 @@ fn main() {
             };
         },
         "status" => {
-            let mut cmd = Status::build(cwd).expect("cannot start status");
-            cmd.execute()
-                .expect("cannot scan");
-            let output = cmd.output();
-            println!("{}", output);
+            let status = Status::build(cwd).expect("status failed");
+            status.execute().expect("failed to run status command");
         },
         _ => {
             eprintln!("Unsupported command");

@@ -1,43 +1,46 @@
 use std::{
     collections::HashMap,
 };
-use serde::{Serialize, Deserialize};
-use crate::repository;
+use crate::{
+    repository,
+    workspace::stat::*,
+};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Entry {
     Tree(Tree),
-    Entry(repository::Entry),
+    Entry(Box<dyn Stat>),
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct Tree{
-    pub oid: Option<repository::Oid>,
-    pub entries: HashMap<String, Entry>,
+    name: Name,
+    oid: Option<repository::Oid>,
+    pub entries: HashMap<Name, Entry>,
 }
 impl Tree {
-    pub fn new() -> Self {
+    pub fn new(name: String) -> Self {
         Self {
+            name,
             oid: None,
             entries: HashMap::new(),
         }
     }
 
-    pub fn add_entry(&mut self, ancestors: &mut Vec<String>, entry: repository::Entry) {
-        let file_name = ancestors.pop().unwrap();
+    pub fn add_entry(&mut self, ancestors: &mut Vec<String>, entry: Box<dyn Stat>) {
+        let entry_name = ancestors.pop().unwrap();
 
         if ancestors.is_empty() {
-            let _ = self.entries.insert(file_name, Entry::Entry(entry));
+            let _ = self.entries.insert(entry_name, Entry::Entry(entry));
             return;
         }
 
-        if let Some(tree) = self.entries.get_mut(&file_name) {
+        if let Some(tree) = self.entries.get_mut(&entry_name) {
             if let Entry::Tree(tree) = tree {
                 tree.add_entry(ancestors, entry);
             }
         } else {
-            let mut tree = Tree::new();
+            let mut tree = Tree::new(entry_name.clone());
             tree.add_entry(ancestors, entry);
-            self.entries.insert(file_name, Entry::Tree(tree));
+            self.entries.insert(entry_name, Entry::Tree(tree));
         }
     }
 
@@ -55,3 +58,23 @@ impl Tree {
     }
 }
 
+impl Stat for Tree {
+    fn mode(&self) -> Mode {
+        DIRECTORY_MODE
+    }
+    fn mtime(&self) -> Mtime {
+        0
+    }
+    fn oid(&self) -> crate::Result<&repository::Oid> {
+        match &self.oid {
+            Some(oid) => Ok(oid),
+            None => Err(crate::Error::Workspace("you cannot use this function. oid of tree not set yet.".into()))
+        }
+    }
+    fn set_oid(&mut self, oid: repository::Oid) {
+        self.oid = Some(oid);
+    }
+    fn name(&self) -> &Name {
+        &self.name
+    }
+}

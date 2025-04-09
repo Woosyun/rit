@@ -4,114 +4,102 @@ pub use tree::*;
 pub mod stat;
 pub use stat::*;
 
-pub mod lockfile;
+pub mod file;
+use file::*;
+
+pub mod ignore;
+pub use ignore::*;
 
 use std::{
     path::{PathBuf, Path},
+    collections::HashMap,
 };
 use crate::{
-    repository,
+    revision::{IntoRev, Rev},
     fs,
 };
+use serde::{Serialize, Deserialize};
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Workspace {
-    pub path: PathBuf,
+    path: PathBuf,
+    ignore: Ignore,
 }
 impl Workspace {
     pub fn build(path: PathBuf) -> crate::Result<Self> {
         if !path.exists() {
             return Err(crate::Error::Workspace("workspace not found".into()));
         }
+        let ignore = Ignore::build(path.clone())?;
 
         let ws = Self {
-            path
+            path,
+            ignore,
         };
-
         Ok(ws)
     }
 
-    //todo: delete this function. make models as simple as possible
-    pub fn list_files(&self, path: Option<PathBuf>) -> crate::Result<Vec<PathBuf>> {
-        let path = match path {
-            Some(path) => path,
-            None => self.path.clone(),
-        };
-
-        let mut files = vec![];
-        for entry in fs::read_dir(&path)? {
-            if let Ok(entry) = entry {
-                if let Ok(file_type) = entry.file_type() {
-                    if file_type.is_file() {
-                        files.push(vec![entry.path()]);
-                    } else if let Ok(sub_files) = self.list_files(Some(entry.path())) {
-                        files.push(sub_files);
-                    } else {
-                        files.push(vec![]);
-                    }
-                }
-            }
-        }
-
-        let files = files
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
-
-        Ok(files)
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
-    pub fn read_dir(&self, path: &Path) -> crate::Result<Vec<PathBuf>> {
-        let mut paths = vec![];
-        for entry in fs::read_dir(path)? {
-            if let Ok(entry) = entry {
-                paths.push(entry.path());
-            }
-        }
-        Ok(paths)
-    }
-
-    pub fn read_stat(&self, file: &Path) -> crate::Result<Stat> {
-        let stat = Stat::from_metadata(&fs::metadata(file)?);
-        Ok(stat)
-    }
-    
-    pub fn read_to_blob(&self, file: &Path) -> crate::Result<repository::Blob> {
-        let content = fs::read_to_string(file)?;
-        let blob = repository::Blob::new(content);
-        Ok(blob)
-    }
-
-    // path should not be relative path
     pub fn get_ancestors(&self, path: &Path) -> crate::Result<Vec<String>> {
-        let relative_path = self.get_relative_path(path)?;
-        let mut ancestors = relative_path.ancestors()
+        //let relative_path = self.get_relative_path(path)?;
+        let mut ancestors = path.ancestors()
             .collect::<Vec<_>>();
         ancestors.pop();
         let ancestors = ancestors
             .into_iter()
-            .map(|p| self.get_file_name(p))
+            .map(|p| fs::get_file_name(p))
             .collect::<crate::Result<Vec<_>>>()?;
         Ok(ancestors)
     }
 
-    pub fn get_file_name(&self, path: &Path) -> crate::Result<String> {
-        match path.file_name() {
-            Some(file_name) => {
-                let file_name = file_name
-                    .to_str().unwrap()
-                    .to_string();
-                Ok(file_name)
-            },
-            None => {
-                let f = format!("{:?}: cannot get file name", path);
-                Err(crate::Error::Workspace(f))
-            }
-        }
-    }
     pub fn get_relative_path(&self, path: &Path) -> crate::Result<PathBuf> {
         path.strip_prefix(&self.path)
             .map(|p| p.to_path_buf())
-            .map_err(|e| crate::Error::Workspace(e.to_string()))
+            .map_err(|e| {
+                let f = format!("{:?}: {}", path, e);
+                crate::Error::Workspace(f)
+            })
+    }
+
+    pub fn list_files(&self, dir: &Path, rev: &mut HashMap<PathBuf, Box<dyn Stat>>) -> crate::Result<()> {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry.map_err(|e| {
+                let f = format!("{:?}: failed to read directory entry", e);
+                crate::Error::Io(f)
+            })?;
+
+            if self.ignore.is_ignored(entry.file_name().to_str().unwrap()) {
+                continue;
+            }
+
+            let file_type = entry
+                .file_type()
+                .map_err(|e| {
+                    let f = format!("{:?}: failed to get file type", e);
+                    crate::Error::Io(f)
+                })?;
+            
+            let entry_path = entry.path();
+            if file_type.is_dir() {
+                self.list_files(&entry_path, rev)?;
+            } else {
+                let entry = Box::new(File::build(&entry_path)?);
+                let relative_path = self.get_relative_path(&entry_path)?;
+                let _ = rev.insert(relative_path, entry);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl IntoRev for Workspace {
+    fn into_rev(&self) -> crate::Result<Rev> {
+        let mut rev = HashMap::new();
+        self.list_files(&self.path, &mut rev)?;
+        Ok(Rev::new(rev))
     }
 }

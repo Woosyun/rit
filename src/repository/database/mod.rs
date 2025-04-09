@@ -14,18 +14,14 @@ pub mod commit;
 pub use commit::*;
 
 
-use std::{
-    path::PathBuf,
-    collections::HashSet,
-};
+use std::path::PathBuf;
 use crate::{
-    workspace::lockfile,
     utils,
     fs,
 };
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{Serialize, de::DeserializeOwned, Deserialize};
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Database {
     path: PathBuf
 }
@@ -33,10 +29,10 @@ impl Database {
     pub fn name() -> &'static str {
         "objects"
     }
+
     pub fn build(repo: PathBuf) -> crate::Result<Self> {
         let mut path = repo;
         path.push(Database::name());
-
         if !path.exists() {
             return Err(crate::Error::Repository(".rit/objects not found".into()));
         }
@@ -46,6 +42,7 @@ impl Database {
         };
         Ok(db)
     }
+
     pub fn init(repo: PathBuf) -> crate::Result<()> {
         let mut path = repo;
         path.push(Database::name());
@@ -71,7 +68,7 @@ impl Database {
             return Ok(oid);
         }
 
-        lockfile::write(&path, &content)?;
+        fs::lock_write(&path, &content)?;
         Ok(oid)
     }
 
@@ -96,11 +93,5 @@ impl Database {
             .map_err(|s| crate::Error::Repository(s))?;
         let oid = Oid::build(&content);
         Ok(oid)
-    }
-
-    //todo: implement
-    #[allow(unused)]
-    pub fn list_files(&self, tree: Tree, files: &mut HashSet<PathBuf>) -> crate::Result<()> {
-        Ok(())
     }
 }

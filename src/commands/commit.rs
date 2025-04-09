@@ -1,91 +1,90 @@
-use crate::{repository, workspace};
-use std::path::PathBuf;
+use crate::{
+    revision::{Revision, IntoRev},
+    workspace::{Workspace, self, Stat},
+    repository::{Blob, Repository, Entry, self},
+    fs,
+};
+use std::{
+    path::{PathBuf, Path},
+};
 
 pub struct Commit {
-    ws: workspace::Workspace,
-    db: repository::Database,
-    head: repository::Head,
-    refs: repository::Refs,
-    ignore: repository::Ignore
+    ws: Workspace,
+    repo: Repository,
 }
 impl Commit {
     pub fn build(cwd: PathBuf) -> crate::Result<Self> {
-        let ws = workspace::Workspace::build(cwd)?;
-        let repo = repository::Repository::build(&ws)?;
-        let db = repo.get_database()?;
-        let head = repo.get_head();
-        let refs = repo.get_refs();
-        let ignore = repo.get_ignore()?;
+        let ws = Workspace::build(cwd)?;
+        let repo = Repository::build(&ws)?;
         let commit = Self {
             ws,
-            db,
-            head,
-            refs,
-            ignore
+            repo,
         };
 
         Ok(commit)
     }
 
-    pub fn execute(&self, msg: String) -> crate::Result<()> {
-        let mut tree = workspace::Tree::new();
-        for file in self.ws.list_files(None)? {
-            let blob = self.ws.read_to_blob(&file)?;
-            let oid = self.db.store(&blob)?;
+    pub fn execute(&self, message: String) -> crate::Result<()> {
+        // 1. read revisions
+        let parent = self.repo.get_head()?;
+        let prev_revision = Revision::build(self.repo.clone(), &parent)?;
+        let prev_rev = prev_revision.into_rev()?;
+        
+        let mut curr_rev = self.ws.into_rev()?;
 
-            let stat = self.ws.read_stat(&file)?;
-            let file_name = self.ws.get_file_name(&file)?;
-
-            if !self.ignore.is_ignored(&file_name) {
-                let entry = repository::Entry::from_blob(stat, oid, file_name);
-                let mut ancestors = self.ws.get_ancestors(&file)?;
-                tree.add_entry(&mut ancestors, entry);
-            }
+        let rev_diff = prev_rev.diff(&curr_rev)?;
+        if rev_diff.is_clean() {
+            return Err(crate::Error::Workspace("Workspace is clean. Nothing to commit".into()));
         }
 
-        //store tree recursively
-        let handler = |tree: &mut workspace::Tree| -> crate::Result<()> {
-            //change entries to Entry::Entry(database::Entry)
-            let entries = tree
+        // 2. store Blobs and update oid for entry
+        let mut store_and_update = |index: &Path| -> crate::Result<()> {
+            let path = self.ws.path().join(&index);
+            let content = fs::read_to_string(&path)?;
+            let blob = Blob::new(content);
+            let oid = self.repo.db.store(&blob)?;
+
+            curr_rev.get_mut(&index).unwrap().set_oid(oid);
+            Ok(())
+        };
+        for index in rev_diff.added.iter() {
+            store_and_update(index)?;
+        }
+        for index in rev_diff.modified.iter() {
+            store_and_update(index)?;
+        }
+
+        // 3. store tree and update oid for entry
+        let mut ws_tree = workspace::Tree::new("".into());
+        for (path, entry) in curr_rev.0 {
+            let mut ancestors = self.ws.get_ancestors(&path)?;
+            ws_tree.add_entry(&mut ancestors, entry);
+        }
+        
+        let f = |tree: &mut workspace::Tree| -> crate::Result<()> {
+            let repo_tree = tree
                 .entries
                 .iter()
-                .map(|(name, entry)| {
-                    match entry {
-                        workspace::Entry::Tree(tree) => {
-                            let oid = tree.oid.as_ref().expect("tree didn't get oid");
-                            let entry = repository::Entry::from_tree(oid.clone(), name.clone());
-                            entry
-                        },
-                        workspace::Entry::Entry(entry) => entry.clone()
+                .map(|(_, tree_entry)| {
+                    match tree_entry {
+                        workspace::Entry::Tree(tree) => Entry::build(tree),
+                        workspace::Entry::Entry(entry) => Entry::build(entry.as_ref()),
                     }
                 })
-                .collect::<Vec<_>>();
-            let db_tree = repository::Tree::new(entries);
-            let oid = self.db.store(&db_tree)?;
-            tree.oid = Some(oid);
+                .collect::<crate::Result<Vec<_>>>()?;
+            let oid = self.repo.db.store(&repo_tree)?;
+            tree.set_oid(oid);
 
             Ok(())
         };
-        tree.traverse_mut(handler)?;
+        ws_tree.traverse_mut(f)?;
 
-        let root_tree_oid = tree.oid.unwrap();
-        let previous_commit_oid = if let Some(branch) = self.head.read()? {
-            Some(self.refs.read(&branch)?)
-        } else {
-            None
-        };
+        // 4. store commit and update head
+        let root = ws_tree.oid()?.clone();
+        let commit = repository::Commit::new(parent, root, message);
+        let new_head = self.repo.db.store(&commit)?;
 
-        let commit = repository::Commit::new(previous_commit_oid, root_tree_oid, msg);
-        let new_head_oid = self.db.store(&commit)?;
-        
-        //todo: change this part to use checkout command
-        if let Some(branch) = self.head.read()? {
-            self.refs.write(&branch, &new_head_oid)?;
-        } else {
-            let main = self.refs.init(&new_head_oid)?;
-            self.head.write(main)?;
-        }
-        
+        self.repo.set_head(&new_head)?;
         Ok(())
     }
 }
