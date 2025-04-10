@@ -25,4 +25,7 @@ impl Commit {
     pub fn parent(&self) -> &Option<Oid> {
         &self.parent
     }
+    pub fn message(&self) -> &str {
+        &self.message
+    }
 }

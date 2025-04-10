@@ -9,6 +9,10 @@ use crate::{
     repository::Repository,
 };
 
+
+// .ignore file should be at workspace
+// so ignore file can be stored in each revision
+
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Ignore(HashSet<String>);
 impl Ignore {

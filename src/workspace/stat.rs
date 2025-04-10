@@ -16,7 +16,6 @@ pub trait Stat {
     fn set_oid(&mut self, oid: Oid);
     fn name(&self) -> &Name;
 
-    //todo: remove this cause don't need anymore.
     //fn clone_box(&self) -> Box<dyn Stat>;
 
     fn is_dir(&self) -> bool {

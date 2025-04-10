@@ -22,9 +22,7 @@ impl Checkout {
         };
         Ok(re)
     }
-
-    // Rev(head).diff(ws)
-    // Rev(head).diff(Rev(target))
+    
     pub fn execute(&self, oid: Oid) -> crate::Result<()> {
         let head = match self.repo.get_head()? {
             Some(oid) => oid,

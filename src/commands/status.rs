@@ -22,7 +22,7 @@ impl Status {
         })
     }
     
-    fn scan(&self) -> crate::Result<RevDiff> {
+    pub fn scan(&self) -> crate::Result<RevDiff> {
         let parent = self.repo.get_head()?;
         let prev_rev = Revision::build(self.repo.clone(), parent.as_ref())?;
         let prev_rev = prev_rev.into_rev()?;

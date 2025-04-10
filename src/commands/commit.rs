@@ -13,8 +13,8 @@ pub struct Commit {
     repo: Repository,
 }
 impl Commit {
-    pub fn build(cwd: PathBuf) -> crate::Result<Self> {
-        let ws = Workspace::build(cwd)?;
+    pub fn build(workdir: PathBuf) -> crate::Result<Self> {
+        let ws = Workspace::build(workdir)?;
         let repo = Repository::build(&ws)?;
         let commit = Self {
             ws,

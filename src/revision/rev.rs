@@ -43,13 +43,14 @@ impl Rev {
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct RevDiff {
     pub added: HashSet<PathBuf>,
     pub removed: HashSet<PathBuf>,
     pub modified: HashSet<PathBuf>,
 }
 impl RevDiff {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             added: HashSet::new(),
             removed: HashSet::new(),

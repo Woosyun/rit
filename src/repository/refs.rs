@@ -30,7 +30,6 @@ impl Refs {
         path.push(REFS);
         path.push(LOCAL);
         fs::create_dir_all(&path)
-        //TODO: add REMOTE?
     }
 
     pub fn get(&self, branch: &str) -> crate::Result<Oid> {

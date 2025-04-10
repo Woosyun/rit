@@ -5,7 +5,7 @@ pub mod stat;
 pub use stat::*;
 
 pub mod file;
-use file::*;
+pub use file::*;
 
 pub mod ignore;
 pub use ignore::*;
