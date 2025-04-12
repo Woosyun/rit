@@ -10,9 +10,7 @@ pub mod error;
 pub use error::*;
 
 pub mod prelude {
-    pub use super::*;
-
-    pub use workspace::{
+    pub use super::workspace::{
         self,
         Workspace,
         Ignore,
@@ -24,16 +22,18 @@ pub mod prelude {
             Name,
         },
     };
-    pub use repository::{
+    pub use super::repository::{
         self,
         Repository,
         Blob,
         Oid,
     };
-    pub use revision::{
+    pub use super::revision::{
         Revision,
         IntoRev,
         Rev,
         RevDiff,
     };
+    pub use super::utils::*;
+    pub use super::commands;
 }

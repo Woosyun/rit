@@ -1,0 +1,161 @@
+mod fs;
+
+use rand::prelude::*;
+use std::{
+    path::{PathBuf, Path},
+    collections::HashSet,
+    io,
+};
+use rit::{
+    self,
+    prelude::*,
+};
+use tempdir::TempDir;
+
+pub struct Client {
+    pub tempdir: TempDir,
+    pub added: HashSet<PathBuf>,
+    pub modified: HashSet<PathBuf>,
+    pub removed: HashSet<PathBuf>,
+}
+
+impl Client {
+    pub fn build(test_name: &str) -> io::Result<Self> {
+        let tempdir = TempDir::new(test_name)?;
+
+        Ok(Self {
+            tempdir,
+            added: HashSet::new(),
+            modified: HashSet::new(),
+            removed: HashSet::new(),
+        })
+    }
+    pub fn workdir(&self) -> &Path {
+        self.tempdir.path()
+    }
+    pub fn workspace(&self) -> rit::Result<Workspace> {
+        Workspace::build(self.workdir().to_path_buf())
+    }
+    pub fn repository(&self) -> rit::Result<Repository> {
+        Repository::build(&self.workspace()?)
+    }
+
+    pub fn init(&self) -> rit::Result<()> {
+        let ws = self.workspace()?;
+        Repository::init(&ws)
+    }
+
+    // todo: make sure create/modify/removed files under directory too
+    pub fn work(&mut self) -> rit::Result<()> {
+        let ws = self.workspace()?;
+        let curr_rev = ws.into_rev()
+            .map_err(|e| io::Error::new(io::ErrorKind::NotFound, e.to_string()))?;
+
+        let mut files = curr_rev.0.keys().cloned().collect::<Vec<_>>();
+        let mut rng = rand::rng();
+        files.shuffle(&mut rng);
+
+        let number_of_files = files.len();
+
+        // 1. choose 1/3 of the files and delete them
+        let number_of_deletion = number_of_files/3;
+        for file in files.iter().take(number_of_deletion) {
+            self.removed.insert(file.clone());
+
+            let path = self.workdir().join(file);
+            if path.exists() {
+                fs::remove_file(&path)?;
+            }
+        }
+
+        // 2. choose 1/2 of rest files and modify them
+        let remaining_files = files
+            .iter()
+            .skip(number_of_deletion)
+            .cloned()
+            .collect::<Vec<_>>();
+        let number_of_modification = number_of_files/3;
+        for file in remaining_files.iter().take(number_of_modification) {
+            self.modified.insert(file.clone());
+
+            let path = self.workdir().join(file);
+            if path.exists() {
+                fs::append(&path, "\n// modified for integration testing")?;
+            }
+        }
+
+        // 3. create random files 1/2 numbers of rest files.
+        let number_of_creation = number_of_files/3;
+        let number_of_creation = if number_of_creation < 3 {
+            3
+        } else {
+            number_of_creation
+        };
+        for i in 0..number_of_creation {
+            let new_file = format!("new_file_{}_{}.txt", i, rng.random::<u32>());
+
+            self.added.insert(Path::new(&new_file).to_path_buf());
+
+            let path = self.workdir().join(new_file);
+            if !path.exists() {
+                fs::write(&path, "newly created for integration testing")?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn commit(&self) -> rit::Result<()> {
+        let cmd = rit::commands::Commit::build(self.workdir().to_path_buf())?;
+        let message = format!("commit-{}", rand::rng().random::<u32>());
+        cmd.execute(message)
+    }
+    pub fn try_commit(&mut self) -> rit::Result<()> {
+        self.commit()?;
+
+        //check deletion worked
+        for file in self.removed.iter() {
+            let path = self.workdir().join(file);
+            if path.exists() {
+                let f = format!("{:?} not removed", file);
+                return Err(rit::Error::Workspace(f));
+            }
+        }
+
+        //check addition/modification worked
+        let repo = self.repository()?;
+        let compare_blobs = |file: &Path| -> rit::Result<()> {
+            let path = self.workdir().join(file);
+            let blob_ws = Blob::new(fs::read_to_string(&path)?);
+            let json = decode(&blob_ws).unwrap();
+            let oid = Oid::build(&json);
+            let blob_db: Blob = repo.db.retrieve(&oid)?;
+            assert_eq!(blob_ws, blob_db);
+
+            Ok(())
+        };
+        for file in self.added.iter() {
+            compare_blobs(file)?;
+        }
+        for file in self.modified.iter() {
+            compare_blobs(file)?;
+        }
+
+        self.added.clear();
+        self.modified.clear();
+        self.removed.clear();
+
+        Ok(())
+    }
+
+    pub fn try_status(&self) -> rit::Result<()> {
+        let status = commands::Status::build(self.workdir().to_path_buf())?;
+        let rev_diff = status.scan()?;
+
+        assert_eq!(self.added, rev_diff.added, "comparing added files for one that was recorded and one returned by status command");
+        assert_eq!(self.modified, rev_diff.modified, "comparing modified files for one that was recorded and one returned by status command");
+        assert_eq!(self.removed, rev_diff.removed, "comparing removed files for one that was recorded and one returned by status command");
+
+        Ok(())
+    }
+}
