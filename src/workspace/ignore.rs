@@ -51,7 +51,7 @@ impl Ignore {
         fs::write(&path, &content)
     }
     pub fn is_ignored(&self, name: &str) -> bool {
-        !self.0.get(name).is_none()
+        self.0.contains(name)
     }
 }
 impl Default for Ignore {

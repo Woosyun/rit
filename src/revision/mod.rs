@@ -29,8 +29,7 @@ impl Revision {
     }
     fn list_entries(&self, base: &Path, tree: &repository::Tree, result: &mut HashMap<PathBuf, Box<dyn Stat>>) -> crate::Result<()> {
         for entry in tree.entries() {
-            let mut new_base = base.to_path_buf();
-            new_base.push(entry.name());
+            let new_base = base.join(entry.name());
 
             if entry.is_dir() {
                 let sub_tree = self.repo.db.retrieve(entry.oid())?;

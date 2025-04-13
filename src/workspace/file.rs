@@ -47,7 +47,7 @@ impl Stat for File {
     fn oid(&self) -> crate::Result<&Oid> {
         match &self.oid {
             Some(oid) => Ok(oid),
-            None => Err(crate::Error::Workspace("you cannot access oid of file through this function".into()))
+            None => Err(crate::Error::Workspace("use of oid() of File before set".into()))
         }
     }
     fn set_oid(&mut self, oid: Oid) {

@@ -12,6 +12,7 @@ use rit::{
 };
 use tempdir::TempDir;
 
+#[derive(Debug)]
 pub struct Client {
     pub tempdir: TempDir,
     pub added: HashSet<PathBuf>,
@@ -45,7 +46,6 @@ impl Client {
         Repository::init(&ws)
     }
 
-    // todo: make sure create/modify/removed files under directory too
     pub fn work(&mut self) -> rit::Result<()> {
         let ws = self.workspace()?;
         let curr_rev = ws.into_rev()
@@ -57,10 +57,10 @@ impl Client {
 
         let number_of_files = files.len();
 
-        // 1. choose 1/3 of the files and delete them
+        //remove
         let number_of_deletion = number_of_files/3;
         for file in files.iter().take(number_of_deletion) {
-            self.removed.insert(file.clone());
+            self.removed.insert(file.to_path_buf());
 
             let path = self.workdir().join(file);
             if path.exists() {
@@ -68,7 +68,7 @@ impl Client {
             }
         }
 
-        // 2. choose 1/2 of rest files and modify them
+        //modify
         let remaining_files = files
             .iter()
             .skip(number_of_deletion)
@@ -76,24 +76,20 @@ impl Client {
             .collect::<Vec<_>>();
         let number_of_modification = number_of_files/3;
         for file in remaining_files.iter().take(number_of_modification) {
-            self.modified.insert(file.clone());
+            self.modified.insert(file.to_path_buf());
 
-            let path = self.workdir().join(file);
-            if path.exists() {
-                fs::append(&path, "\n// modified for integration testing")?;
-            }
+            let path = self.workdir().join(&file);
+            fs::appendln(&path, "\n//modified for integration testing")?;
         }
 
-        // 3. create random files 1/2 numbers of rest files.
-        let number_of_creation = number_of_files/3;
-        let number_of_creation = if number_of_creation < 3 {
-            3
+        //add
+        let number_of_creation = if number_of_files < 10 {
+            10
         } else {
-            number_of_creation
+            number_of_files/3
         };
         for i in 0..number_of_creation {
             let new_file = format!("new_file_{}_{}.txt", i, rng.random::<u32>());
-
             self.added.insert(Path::new(&new_file).to_path_buf());
 
             let path = self.workdir().join(new_file);
@@ -130,6 +126,7 @@ impl Client {
             let json = decode(&blob_ws).unwrap();
             let oid = Oid::build(&json);
             let blob_db: Blob = repo.db.retrieve(&oid)?;
+
             assert_eq!(blob_ws, blob_db);
 
             Ok(())

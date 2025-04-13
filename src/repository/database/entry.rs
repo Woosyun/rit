@@ -9,6 +9,9 @@ type Name = String;
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone)]
 pub struct Entry(pub Mode, pub Mtime, pub Oid, pub Name);
 impl Entry {
+    pub fn new(mode: Mode, mtime: Mtime, oid: Oid, name: Name) -> Self {
+        Self(mode, mtime, oid, name)
+    }
     pub fn build(stat: &dyn Stat) -> crate::Result<Self> {
         let oid = stat.oid()?.clone();
         let name = stat.name().to_string();

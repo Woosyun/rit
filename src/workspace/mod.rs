@@ -66,10 +66,7 @@ impl Workspace {
 
     pub fn list_files(&self, dir: &Path, rev: &mut HashMap<PathBuf, Box<dyn Stat>>) -> crate::Result<()> {
         for entry in fs::read_dir(dir)? {
-            let entry = entry.map_err(|e| {
-                let f = format!("{:?}: failed to read directory entry", e);
-                crate::Error::Io(f)
-            })?;
+            let entry = entry.map_err(Into::<crate::Error>::into)?;
 
             if self.ignore.is_ignored(entry.file_name().to_str().unwrap()) {
                 continue;
@@ -77,18 +74,15 @@ impl Workspace {
 
             let file_type = entry
                 .file_type()
-                .map_err(|e| {
-                    let f = format!("{:?}: failed to get file type", e);
-                    crate::Error::Io(f)
-                })?;
+                .map_err(Into::<crate::Error>::into)?;
             
             let entry_path = entry.path();
             if file_type.is_dir() {
                 self.list_files(&entry_path, rev)?;
             } else {
-                let entry = Box::new(File::build(&entry_path)?);
+                let file = Box::new(File::build(&entry_path)?);
                 let relative_path = self.get_relative_path(&entry_path)?;
-                let _ = rev.insert(relative_path, entry);
+                let _ = rev.insert(relative_path, file);
             }
         }
 

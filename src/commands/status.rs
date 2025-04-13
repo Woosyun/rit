@@ -28,6 +28,7 @@ impl Status {
         let prev_rev = prev_rev.into_rev()?;
         let curr_rev = self.ws.into_rev()?;
 
+        // todo: cannot recognize modification through change of mtime
         let rev_diff = prev_rev.diff(&curr_rev)?;
         Ok(rev_diff)
     }

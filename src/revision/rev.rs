@@ -29,13 +29,13 @@ impl Rev {
                 rev_diff.removed.insert(path.to_path_buf());
             }
         }
-        for (path, to_entry) in to.0.iter() {
-            if let Some(from_entry) = self.0.get(path) {
+        for (index, to_entry) in to.0.iter() {
+            if let Some(from_entry) = self.0.get(index) {
                 if from_entry.mtime() != to_entry.mtime() {
-                    rev_diff.modified.insert(path.to_path_buf());
+                    rev_diff.modified.insert(index.to_owned());
                 }
             } else {
-                rev_diff.added.insert(path.to_path_buf());
+                rev_diff.added.insert(index.to_owned());
             }
         }
 

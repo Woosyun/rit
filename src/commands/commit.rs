@@ -28,8 +28,7 @@ impl Commit {
         // 1. read revisions
         let parent = self.repo.get_head()?;
         let prev_revision = Revision::build(self.repo.clone(), parent.as_ref())?;
-        let prev_rev = prev_revision.into_rev()?;
-        
+        let mut prev_rev = prev_revision.into_rev()?;
         let mut curr_rev = self.ws.into_rev()?;
 
         let rev_diff = prev_rev.diff(&curr_rev)?;
@@ -44,7 +43,11 @@ impl Commit {
             let blob = Blob::new(content);
             let oid = self.repo.db.store(&blob)?;
 
-            curr_rev.get_mut(&index).unwrap().set_oid(oid);
+            let file = curr_rev.0.get_mut(index).unwrap();
+            file.set_oid(oid);
+
+            let entry = Entry::build(file.as_ref())?;
+            prev_rev.0.insert(index.to_path_buf(), Box::new(entry));
             Ok(())
         };
         for index in rev_diff.added.iter() {
@@ -53,10 +56,13 @@ impl Commit {
         for index in rev_diff.modified.iter() {
             store_and_update(index)?;
         }
+        for index in rev_diff.removed.iter() {
+            prev_rev.0.remove(index).unwrap();
+        }
 
         // 3. store tree and update oid for entry
         let mut ws_tree = workspace::Tree::new("".into());
-        for (path, entry) in curr_rev.0 {
+        for (path, entry) in prev_rev.0 {
             let mut ancestors = self.ws.get_ancestors(&path)?;
             ws_tree.add_entry(&mut ancestors, entry);
         }
