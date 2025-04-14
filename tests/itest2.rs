@@ -3,49 +3,43 @@ use itest::*;
 
 #[test]
 pub fn checkout_when_workspace_is_not_clean() -> rit::Result<()> {
-    let mut client = Client::build("checkout")?;
+    let mut client = Client::build("checkout-when-workspace-is-not-clean")?;
+    client.init()?;
+
+    client.work()?;
+    client.try_commit()?;
+    client.try_branch_create("new_branch")?;
+    
+    client.work()?;
+    client.try_checkout("new_branch")
+}
+
+#[test]
+pub fn checkout_from_clean_workspace() -> rit::Result<()> {
+    let mut client = Client::build("checkout-from-clean-workspace")?;
     client.init()?;
 
     client.work()?;
     client.try_commit()?;
     
+    client.try_branch_create("new_branch")?;
+    client.try_checkout("new_branch")?;
+
     client.work()?;
-    client.try_checkout(/*previous revison?*/)
+    client.try_commit()?;
+    client.try_checkout("main")
 }
 
 #[test]
-pub fn checkout_to_previous_revision() -> rit::Result<()> {
-    let mut client = Client::build("checkout-to-preivous-revision")?;
+pub fn checkout_while_working() -> rit::Result<()> {
+    let mut client = Client::build("checkout-while-working")?;
     client.init()?;
 
     client.work()?;
     client.try_commit()?;
 
     client.work()?;
-    client.try_commit()?;
-    client.try_checkout()
-}
-#[test]
-pub fn checkout_to_original_reivision() -> rit::Result<()> {
-    let mut client = Client::build("checkout-to-original-revision")?;
-    client.init()?;
-
-    client.work()?;
-    client.try_commit()?;
-
-    client.work()?;
-    client.try_commit()?;
-    client.try_checkout()?;
-
-    client.try_checkout()
-}
-
-#[test]
-pub fn branch() -> rit::Result<()> {
-    todo!("test branch");
-}
-
-#[test]
-pub fn log() -> rit::Result<()> {
-    todo!("test log");
+    client.try_branch_create("new_branch")?;
+    client.try_checkout("new_branch")?;
+    client.try_commit()
 }

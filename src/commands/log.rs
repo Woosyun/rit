@@ -18,17 +18,19 @@ impl Log {
         })
     }
 
-    pub fn execute(&mut self, branch: &str) -> Result<()> {
+    pub fn execute(&mut self, branch: &str) -> Result<Vec<(Oid, repository::Commit)>> {
+        let mut result = Vec::new();
+
         let mut leaf = Some(self.repo.refs.get(branch)?);
         while !leaf.is_none() {
             let oid = leaf.unwrap();
             let commit: repository::Commit = self.repo.db.retrieve(&oid)?;
-            self.history.push((oid, commit.clone()));
+            result.push((oid, commit.clone()));
 
             leaf = commit.parent().clone();
         }
 
-        Ok(())
+        Ok(result)
     }
 
     pub fn print(&self) {

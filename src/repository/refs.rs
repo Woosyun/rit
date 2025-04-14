@@ -1,6 +1,9 @@
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    collections::HashSet,
+};
 use crate::{
-    repository::database::Oid,
+    prelude::*,
     utils,
     fs,
 };
@@ -43,6 +46,22 @@ impl Refs {
         path.push(LOCAL);
         path.push(branch);
         path.exists()
+    }
+
+    pub fn list_branches(&self) -> Result<HashSet<String>> {
+        let mut path = self.path.clone();
+        path.push(LOCAL);
+
+        let mut result = HashSet::new();
+        for entry in fs::read_dir(&path)? {
+            let entry = entry?;
+            let branch = entry.file_name()
+                .to_str().unwrap()
+                .to_string();
+            result.insert(branch);
+        }
+
+        Ok(result)
     }
 
     pub fn get(&self, branch: &str) -> crate::Result<Oid> {

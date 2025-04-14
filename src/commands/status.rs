@@ -1,7 +1,4 @@
-use std::{
-    path::PathBuf,
-    fmt::Write,
-};
+use std::path::PathBuf;
 use crate::prelude::*;
 
 pub struct Status {
@@ -18,7 +15,7 @@ impl Status {
         })
     }
     
-    pub fn scan(&self) -> crate::Result<RevDiff> {
+    pub fn execute(&self) -> crate::Result<RevDiff> {
         let head = self.repo.local_head.get()?;
         if !head.is_branch() {
             return Err(Error::Repository("cannot scan on non-branch revision yet".into()));
@@ -32,25 +29,5 @@ impl Status {
 
         let rev_diff = prev_rev.diff(&curr_rev)?;
         Ok(rev_diff)
-    }
-
-    pub fn execute(&self) -> crate::Result<()> {
-        let rev_diff = self.scan()?;
-        let mut output = String::new();
-        writeln!(output, "added files").unwrap();
-        for entry in rev_diff.added.iter() {
-            writeln!(output, "{:?}", entry).unwrap();
-        }
-        writeln!(output, "removed files").unwrap();
-        for entry in rev_diff.removed.iter() {
-            writeln!(output, "{:?}", entry).unwrap();
-        }
-        writeln!(output, "modified files").unwrap();
-        for entry in rev_diff.modified.iter() {
-            writeln!(output, "{:?}", entry).unwrap();
-        }
-
-        println!("{}", output);
-        Ok(())
     }
 }

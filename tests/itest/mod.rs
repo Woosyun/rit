@@ -150,9 +150,9 @@ impl Client {
         Ok(())
     }
 
-    pub fn try_status(&self) -> rit::Result<()> {
+    pub fn try_status(&self) -> Result<()> {
         let status = commands::Status::build(self.workdir().to_path_buf())?;
-        let rev_diff = status.scan()?;
+        let rev_diff = status.execute()?;
 
         assert_eq!(self.added, rev_diff.added, "comparing added files for one that was recorded and one returned by status command");
         assert_eq!(self.modified, rev_diff.modified, "comparing modified files for one that was recorded and one returned by status command");
@@ -161,7 +161,31 @@ impl Client {
         Ok(())
     }
 
-    pub fn try_checkout(&self) -> Result<()> {
-        todo!("checkout command");
+    //일단은 branch 사이에서만 테스트 진행
+    pub fn try_checkout(&self, branch: &str) -> Result<()> {
+        let repo = self.repository()?;
+        let target_oid = repo.refs.get(branch)?;
+        let target_rev = Revision::build(repo, &target_oid)?
+            .into_rev()?;
+
+        let checkout = commands::Checkout::build(self.workdir().to_path_buf())?;
+        checkout.execute(branch)?;
+
+        let repo = self.repository()?;
+        let head = repo.local_head.get()?;
+        let curr_oid= repo.refs.get(head.branch()?)?;
+        let curr_rev = Revision::build(repo, &curr_oid)?
+            .into_rev()?;
+        let rev_diff = target_rev.diff(&curr_rev)?;
+        assert!(rev_diff.is_clean());
+
+        Ok(())
+    }
+
+    pub fn try_branch_create(&self, new_branch: &str) -> Result<()> {
+        let branch = commands::Branch::build(self.workdir().to_path_buf())?;
+        branch.create(new_branch)?;
+
+        Ok(())
     }
 }
