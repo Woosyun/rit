@@ -1,8 +1,5 @@
 use std::path::PathBuf;
-use crate::{
-    workspace::Workspace,
-    repository::Repository,
-};
+use crate::prelude::*;
 
 pub struct Init {
     ws: Workspace,

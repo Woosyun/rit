@@ -14,14 +14,11 @@ use serde::{Serialize, Deserialize};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Revision {
     repo: Repository,
-    commit: Option<repository::Commit>,
+    commit: repository::Commit
 }
 impl Revision {
-    pub fn build(repo: Repository, oid: Option<&Oid>) -> crate::Result<Self> {
-        let commit = match oid {
-            Some(oid) => Some(repo.db.retrieve(oid)?),
-            None => None
-        };
+    pub fn build(repo: Repository, oid: &Oid) -> crate::Result<Self> {
+        let commit = repo.db.retrieve(oid)?;
         Ok(Self {
             repo,
             commit,
@@ -46,11 +43,11 @@ impl Revision {
 impl IntoRev for Revision {
     fn into_rev(&self) -> crate::Result<Rev> {
         let mut rev = HashMap::new();
-        if let Some(target_commit) = &self.commit {
-            let root = &target_commit.root();
-            let root_tree = self.repo.db.retrieve(root)?;
-            self.list_entries(Path::new(""), &root_tree, &mut rev)?;
-        }
+
+        let root = self.commit.root();
+        let root_tree = self.repo.db.retrieve(root)?;
+        self.list_entries(Path::new(""), &root_tree, &mut rev)?;
+
         let rev = Rev::new(rev);
         Ok(rev)
     }

@@ -1,7 +1,5 @@
 use crate::{
-    revision::{Revision, IntoRev},
-    workspace::{Workspace, self, Stat},
-    repository::{Blob, Repository, Entry, self},
+    prelude::*,
     fs,
 };
 use std::{
@@ -25,9 +23,17 @@ impl Commit {
     }
 
     pub fn execute(&self, message: String) -> crate::Result<()> {
+        let head = self.repo.local_head.get()?;
+        //
+        // if head is not tip of branch, cannot commit
+        if !head.is_branch() {
+            return Err(Error::Repository("cannot run commit on non-branch head".into()));
+        }
+
+        let branch = head.branch()?;
+        let parent = self.repo.refs.get(branch)?;
         // 1. read revisions
-        let parent = self.repo.get_head()?;
-        let prev_revision = Revision::build(self.repo.clone(), parent.as_ref())?;
+        let prev_revision = Revision::build(self.repo.clone(), &parent)?;
         let mut prev_rev = prev_revision.into_rev()?;
         let mut curr_rev = self.ws.into_rev()?;
 
@@ -46,7 +52,7 @@ impl Commit {
             let file = curr_rev.0.get_mut(index).unwrap();
             file.set_oid(oid);
 
-            let entry = Entry::build(file.as_ref())?;
+            let entry = repository::Entry::build(file.as_ref())?;
             prev_rev.0.insert(index.to_path_buf(), Box::new(entry));
             Ok(())
         };
@@ -73,8 +79,8 @@ impl Commit {
                 .iter()
                 .map(|(_, tree_entry)| {
                     match tree_entry {
-                        workspace::Entry::Tree(tree) => Entry::build(tree),
-                        workspace::Entry::Entry(entry) => Entry::build(entry.as_ref()),
+                        workspace::Entry::Tree(tree) => repository::Entry::build(tree),
+                        workspace::Entry::Entry(entry) => repository::Entry::build(entry.as_ref()),
                     }
                 })
                 .collect::<crate::Result<Vec<_>>>()?;
@@ -87,10 +93,11 @@ impl Commit {
 
         // 4. store commit and update head
         let root = ws_tree.oid()?.clone();
-        let commit = repository::Commit::new(parent, root, message);
+        let commit = repository::Commit::new(Some(parent), root, message);
         let new_head = self.repo.db.store(&commit)?;
 
-        self.repo.set_head(&new_head)?;
+        self.repo.refs.set(branch, &new_head)?;
+
         Ok(())
     }
 }

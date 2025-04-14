@@ -1,10 +1,5 @@
 mod itest;
-use itest::Client;
-
-use std::{time::Duration, thread};
-fn sleep_1_sec() {
-    thread::sleep(Duration::from_secs(1));
-}
+use itest::*;
 
 #[test]
 pub fn initialize_repository() -> rit::Result<()> {
@@ -28,6 +23,7 @@ pub fn status_after_first_work() -> rit::Result<()> {
     client.work()?;
     client.try_status()
 }
+#[test]
 pub fn commit_once() -> rit::Result<()> {
     let mut client = Client::build("status-after-first-work")?;
     client.init()?;
@@ -53,8 +49,6 @@ pub fn status_after_second_work() -> rit::Result<()> {
     client.work()?;
     client.try_commit()?;
 
-    sleep_1_sec();
-
     client.work()?;
     client.try_status()
 }
@@ -66,8 +60,6 @@ pub fn commit_twice() -> rit::Result<()> {
     client.work()?;
     client.try_commit()?;
 
-    sleep_1_sec();
-
     client.work()?;
     client.try_commit()
 }
@@ -78,8 +70,6 @@ pub fn status_after_second_commit() -> rit::Result<()> {
 
     client.work()?;
     client.try_commit()?;
-
-    sleep_1_sec();
 
     client.work()?;
     client.try_commit()?;

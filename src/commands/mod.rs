@@ -9,3 +9,9 @@ pub use status::*;
 
 pub mod checkout;
 pub use checkout::*;
+
+pub mod log;
+pub use log::*;
+
+pub mod branch;
+pub use branch::*;

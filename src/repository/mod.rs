@@ -8,7 +8,7 @@ pub mod database;
 pub use database::*;
 
 use crate::{
-    workspace::Workspace,
+    prelude::*,
     fs,
 };
 use serde::{Serialize, Deserialize};
@@ -16,7 +16,7 @@ use serde::{Serialize, Deserialize};
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Repository {
     pub db: Database,
-    pub head: Head,
+    pub local_head: LocalHead,
     pub refs: Refs,
 }
 impl Repository {
@@ -31,12 +31,12 @@ impl Repository {
         }
 
         let db = Database::build(path.clone())?;
-        let head = Head::build(path.clone());
+        let local_head = LocalHead::build(path.clone())?;
         let refs = Refs::build(path.clone())?;
 
         let repo = Self {
             db,
-            head,
+            local_head,
             refs,
         };
 
@@ -50,25 +50,16 @@ impl Repository {
         }
 
         Database::init(repo.clone())?;
-        Refs::init(repo)?;
+        let db = Database::build(repo.clone())?;
 
-        Ok(())
-    }
-    pub fn get_head(&self) -> crate::Result<Option<Oid>> {
-        if let Some(branch) = self.head.get()? {
-            let oid = self.refs.get(&branch)?;
-            Ok(Some(oid))
-        } else {
-            Ok(None)
-        }
-    }
-    pub fn set_head(&self, oid: &Oid) -> crate::Result<()> {
-        if let Some(branch) = self.head.get()? {
-            self.refs.set(&branch, oid)?;
-        } else {
-            self.refs.set("main", oid)?;
-            self.head.set("main")?;
-        }
+        let empty_tree = Tree::new(vec![]);
+        let root = db.store(&empty_tree)?;
+        let message = "initialize repository".to_string();
+        let commit = Commit::new(None, root, message);
+        let head = db.store(&commit)?;
+        Refs::init(repo.clone(), &head)?;
+        LocalHead::init(repo)?;
+
         Ok(())
     }
 }

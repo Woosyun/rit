@@ -1,4 +1,7 @@
+#![allow(unused)]
+
 mod fs;
+mod utils;
 
 use rand::prelude::*;
 use std::{
@@ -47,6 +50,8 @@ impl Client {
     }
 
     pub fn work(&mut self) -> rit::Result<()> {
+        utils::sleep_1_sec();
+
         let ws = self.workspace()?;
         let curr_rev = ws.into_rev()
             .map_err(|e| io::Error::new(io::ErrorKind::NotFound, e.to_string()))?;
@@ -154,5 +159,9 @@ impl Client {
         assert_eq!(self.removed, rev_diff.removed, "comparing removed files for one that was recorded and one returned by status command");
 
         Ok(())
+    }
+
+    pub fn try_checkout(&self) -> Result<()> {
+        todo!("checkout command");
     }
 }

@@ -1,5 +1,6 @@
 use sha2::{Sha256, Digest};
 use serde::{Serialize, Deserialize};
+use std::fmt;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Oid([u8; 32]);
@@ -25,4 +26,13 @@ impl Oid {
     }
 }
 
-
+impl fmt::Display for Oid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let hex_oid = self.0
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<Vec<_>>()
+            .join("");
+        write!(f, "{}", hex_oid)
+    }
+}

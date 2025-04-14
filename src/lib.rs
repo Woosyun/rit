@@ -36,4 +36,5 @@ pub mod prelude {
     };
     pub use super::utils::*;
     pub use super::commands;
+    pub use super::error::*;
 }

@@ -34,6 +34,11 @@ fn main() {
             let status = Status::build(cwd).expect("status failed");
             status.execute().expect("failed to run status command");
         },
+        "log" => {
+            let mut log = Log::build(cwd).expect("log failed");
+            log.execute("main").expect("failed to run log command");
+            log.print();
+        },
         _ => {
             eprintln!("Unsupported command");
         }

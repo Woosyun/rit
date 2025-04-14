@@ -2,11 +2,7 @@ use std::{
     path::PathBuf,
     fmt::Write,
 };
-use crate::{
-    workspace::{Workspace},
-    repository::{Repository},
-    revision::*,
-};
+use crate::prelude::*;
 
 pub struct Status {
     ws: Workspace,
@@ -23,12 +19,17 @@ impl Status {
     }
     
     pub fn scan(&self) -> crate::Result<RevDiff> {
-        let parent = self.repo.get_head()?;
-        let prev_rev = Revision::build(self.repo.clone(), parent.as_ref())?;
+        let head = self.repo.local_head.get()?;
+        if !head.is_branch() {
+            return Err(Error::Repository("cannot scan on non-branch revision yet".into()));
+        }
+        let branch = head.branch()?;
+        let parent = self.repo.refs.get(branch)?;
+        let prev_rev = Revision::build(self.repo.clone(), &parent)?;
+
         let prev_rev = prev_rev.into_rev()?;
         let curr_rev = self.ws.into_rev()?;
 
-        // todo: cannot recognize modification through change of mtime
         let rev_diff = prev_rev.diff(&curr_rev)?;
         Ok(rev_diff)
     }

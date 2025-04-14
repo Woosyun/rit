@@ -68,7 +68,7 @@ impl Stat for Tree {
     fn oid(&self) -> crate::Result<&repository::Oid> {
         match &self.oid {
             Some(oid) => Ok(oid),
-            None => Err(crate::Error::Workspace("you cannot use this function. oid of tree not set yet.".into()))
+            None => Err(crate::Error::Workspace("try to access oid of tree before it set".into()))
         }
     }
     fn set_oid(&mut self, oid: repository::Oid) {

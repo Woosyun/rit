@@ -25,11 +25,24 @@ impl Refs {
             path 
         })
     }
-    pub fn init(repo: PathBuf) -> crate::Result<()> {
+    pub fn init(repo: PathBuf, oid: &Oid) -> crate::Result<()> {
         let mut path = repo;
         path.push(REFS);
+        let refs = Self {
+            path: path.clone()
+        };
+
         path.push(LOCAL);
-        fs::create_dir_all(&path)
+        fs::create_dir_all(&path)?;
+
+        refs.set("main", oid)
+    }
+
+    pub fn contains(&self, branch: &str) -> bool {
+        let mut path = self.path.clone();
+        path.push(LOCAL);
+        path.push(branch);
+        path.exists()
     }
 
     pub fn get(&self, branch: &str) -> crate::Result<Oid> {

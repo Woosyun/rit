@@ -1,7 +1,5 @@
 use crate::{
-    workspace::Workspace,
-    repository::{Repository, Oid, Blob},
-    revision::{Revision, IntoRev},
+    prelude::*,
     fs,
 };
 use std::path::{PathBuf, Path};
@@ -23,23 +21,36 @@ impl Checkout {
         Ok(re)
     }
     
-    pub fn execute(&self, oid: Oid) -> crate::Result<()> {
-        let head = match self.repo.get_head()? {
-            Some(oid) => oid,
-            None => return Err(crate::Error::Workspace("repository is empty. cannot use checkout".into())),
+    pub fn execute(&self, branch: &str) -> crate::Result<()> {
+        //if target revision is based on same commit,
+        //and just different on branch name,
+        //move head and return
+        let target_oid = self.repo.refs.get(branch)?;
+
+        let head = self.repo.local_head.get()?;
+        let prev_oid = if head.is_branch() {
+            let branch = head.branch()?;
+            let prev_oid = self.repo.refs.get(branch)?;
+            if prev_oid == target_oid {
+                self.repo.local_head.set_to_branch(branch)?;
+                return Ok(());
+            }
+
+            prev_oid
+        } else {
+            head.oid()?.to_owned()
         };
-        let prev_rev = Revision::build(self.repo.clone(), Some(&head))?;
+        let prev_rev = Revision::build(self.repo.clone(), &prev_oid)?;
         let prev_rev = prev_rev.into_rev()?;
 
         let curr_rev = self.ws.into_rev()?;
 
-        //check whether workspace is clean or not.
         let rev_diff_for_check = prev_rev.diff(&curr_rev)?;
         if !rev_diff_for_check.is_clean() {
             return Err(crate::Error::Workspace("workspace is not clean. cannot use checkout".into()));
         }
 
-        let target_rev = Revision::build(self.repo.clone(), Some(&oid))?;
+        let target_rev = Revision::build(self.repo.clone(), &target_oid)?;
         let target_rev = target_rev.into_rev()?;
         let rev_diff = curr_rev.diff(&target_rev)?;
 
@@ -66,7 +77,7 @@ impl Checkout {
         //clear empty directories
 
         //update head
-        self.repo.set_head(&oid)?;
+        self.repo.local_head.set_to_oid(&target_oid)?;
 
         Ok(())
     }
