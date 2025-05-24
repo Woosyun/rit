@@ -42,6 +42,8 @@ impl Repository {
 
         Ok(repo)
     }
+    //todo: do not create commit.
+    //      make it work!
     pub fn init(ws: &Workspace) -> crate::Result<()> {
         let mut repo = ws.path().to_path_buf();
         repo.push(Repository::name());
@@ -51,14 +53,15 @@ impl Repository {
 
         Database::init(repo.clone())?;
         let db = Database::build(repo.clone())?;
-
         let empty_tree = Tree::new(vec![]);
         let root = db.store(&empty_tree)?;
         let message = "initialize repository".to_string();
         let commit = Commit::new(None, root, message);
         let head = db.store(&commit)?;
-        Refs::init(repo.clone(), &head)?;
-        LocalHead::init(repo)?;
+
+        let main: &str = "main";
+        Refs::init(repo.clone(), main, &head)?;
+        LocalHead::init(repo.clone(), main)?;
 
         Ok(())
     }

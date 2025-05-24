@@ -28,7 +28,7 @@ impl Refs {
             path 
         })
     }
-    pub fn init(repo: PathBuf, oid: &Oid) -> crate::Result<()> {
+    pub fn init(repo: PathBuf, main: &str, oid: &Oid) -> crate::Result<()> {
         let mut path = repo;
         path.push(REFS);
         let refs = Self {
@@ -38,7 +38,11 @@ impl Refs {
         path.push(LOCAL);
         fs::create_dir_all(&path)?;
 
-        refs.set("main", oid)
+        if !refs.contains(main) {
+            refs.set(main, oid)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn contains(&self, branch: &str) -> bool {

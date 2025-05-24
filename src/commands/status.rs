@@ -16,6 +16,18 @@ impl Status {
     }
     
     pub fn execute(&self) -> crate::Result<RevDiff> {
+        let prev_rev = self.scan_head()?;
+        let curr_rev = self.ws.into_rev()?;
+
+        let rev_diff = prev_rev.diff(&curr_rev)?;
+        Ok(rev_diff)
+    }
+
+    //todo: why do I need this?
+    pub fn scan_workspace(&self) -> Result<Rev> {
+        self.ws.into_rev()
+    }
+    pub fn scan_head(&self) -> Result<Rev> {
         let head = self.repo.local_head.get()?;
         if !head.is_branch() {
             return Err(Error::Repository("cannot scan on non-branch revision yet".into()));
@@ -24,10 +36,52 @@ impl Status {
         let parent = self.repo.refs.get(branch)?;
         let prev_rev = Revision::build(self.repo.clone(), &parent)?;
 
-        let prev_rev = prev_rev.into_rev()?;
-        let curr_rev = self.ws.into_rev()?;
+        prev_rev.into_rev()
+    }
+    /// read working directory and report status about its repository
+    pub fn scan(wd: PathBuf) -> Result<RepositoryStatus> {
+        let mut path = wd.clone();
+        if !path.exists() {
+            return Ok(RepositoryStatus::InvalidPath);
+        }
+        path.push(Repository::name());
+        if !path.exists() {
+            return Ok(RepositoryStatus::NotFound);
+        }
 
-        let rev_diff = prev_rev.diff(&curr_rev)?;
-        Ok(rev_diff)
+        let ws = Workspace::build(wd)?;
+        let repo = Repository::build(&ws)?;
+        let head = repo.local_head.get()?;
+        if !head.is_branch() {
+            return Ok(RepositoryStatus::NotBranch);
+        }
+
+        Ok(RepositoryStatus::Normal)
+    }
+}
+
+#[derive(Debug)]
+pub enum RepositoryStatus {
+    InvalidPath,
+    NotFound,
+    NotBranch,
+    Normal
+}
+impl RepositoryStatus {
+    pub fn is_repository_initialized(&self) -> bool {
+        use RepositoryStatus::*;
+        match self {
+            InvalidPath => false,
+            NotFound => false,
+            _ => true,
+        }
+    }
+    
+    pub fn is_path_valid(&self) -> bool {
+        use RepositoryStatus::*;
+        match self {
+            InvalidPath => false,
+            _ => true,
+        }
     }
 }
