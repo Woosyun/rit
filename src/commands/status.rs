@@ -16,29 +16,16 @@ impl Status {
     }
     
     pub fn execute(&self) -> crate::Result<RevDiff> {
-        let prev_rev = self.scan_head()?;
+        let prev_rev = self.repo.into_rev()?;
         let curr_rev = self.ws.into_rev()?;
 
         let rev_diff = prev_rev.diff(&curr_rev)?;
         Ok(rev_diff)
     }
 
-    //todo: why do I need this?
-    pub fn scan_workspace(&self) -> Result<Rev> {
-        self.ws.into_rev()
-    }
-    pub fn scan_head(&self) -> Result<Rev> {
-        let head = self.repo.local_head.get()?;
-        if !head.is_branch() {
-            return Err(Error::Repository("cannot scan on non-branch revision yet".into()));
-        }
-        let branch = head.branch()?;
-        let parent = self.repo.refs.get(branch)?;
-        let prev_rev = Revision::build(self.repo.clone(), &parent)?;
+    // read working directory and report status about its repository
 
-        prev_rev.into_rev()
-    }
-    /// read working directory and report status about its repository
+    /*
     pub fn scan(wd: PathBuf) -> Result<RepositoryStatus> {
         let mut path = wd.clone();
         if !path.exists() {
@@ -58,6 +45,7 @@ impl Status {
 
         Ok(RepositoryStatus::Normal)
     }
+    */
 }
 
 #[derive(Debug)]

@@ -50,14 +50,18 @@ impl LocalHead {
             path
         })
     }
-    pub fn init(repo: PathBuf, main: &str) -> Result<()> {
+    pub fn init(repo: PathBuf) -> Result<()> {
         let mut path = repo;
         path.push(LOCAL_HEAD);
-        let lh = Self {
-            path
-        };
 
-        lh.set_to_branch(main)
+        if !path.exists() {
+            let lh = Self {
+                path
+            };
+            lh.set_to_branch("main")?;
+        }
+
+        Ok(())
     }
     pub fn get(&self) -> crate::Result<Head> {
         let content = fs::read_to_string(&self.path)?;

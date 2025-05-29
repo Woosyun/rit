@@ -12,6 +12,7 @@ use crate::{
     fs,
 };
 use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Repository {
@@ -42,8 +43,6 @@ impl Repository {
 
         Ok(repo)
     }
-    //todo: do not create commit.
-    //      make it work!
     pub fn init(ws: &Workspace) -> crate::Result<()> {
         let mut repo = ws.path().to_path_buf();
         repo.push(Repository::name());
@@ -52,17 +51,29 @@ impl Repository {
         }
 
         Database::init(repo.clone())?;
-        let db = Database::build(repo.clone())?;
-        let empty_tree = Tree::new(vec![]);
-        let root = db.store(&empty_tree)?;
-        let message = "initialize repository".to_string();
-        let commit = Commit::new(None, root, message);
-        let head = db.store(&commit)?;
-
-        let main: &str = "main";
-        Refs::init(repo.clone(), main, &head)?;
-        LocalHead::init(repo.clone(), main)?;
+        Refs::init(repo.clone())?;
+        LocalHead::init(repo)?;
 
         Ok(())
+    }
+}
+
+impl IntoRev for Repository {
+    fn into_rev(&self) -> Result<Rev> {
+        let head = self.local_head.get()?;
+        let branch = if !head.is_branch() {
+            return Err(Error::Repository("cannot get Rev from non-branch head".to_string()));
+        } else {
+            head.branch()?
+        };
+        let rev = if self.refs.contains(branch) {
+            let parent = self.refs.get(branch)?;
+            Revision::build(self.clone(), &parent)?
+                .into_rev()?
+        } else {
+            Rev::new(HashMap::new())
+        };
+
+        Ok(rev)
     }
 }

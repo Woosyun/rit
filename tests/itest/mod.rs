@@ -107,9 +107,10 @@ impl Client {
     }
 
     fn commit(&self) -> rit::Result<()> {
-        let cmd = rit::commands::Commit::build(self.workdir().to_path_buf())?;
+        let mut cmd = rit::commands::Commit::build(self.workdir().to_path_buf())?;
         let message = format!("commit-{}", rand::rng().random::<u32>());
-        cmd.execute(message)
+        cmd.set_message(message);
+        cmd.execute()
     }
     pub fn try_commit(&mut self) -> rit::Result<()> {
         self.commit()?;
