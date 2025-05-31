@@ -1,7 +1,9 @@
+use crate::prelude::*;
 use std::{
     fs,
     path::Path,
 };
+use filetime::FileTime;
 
 pub fn read_to_string(path: &Path) -> crate::Result<String> {
     fs::read_to_string(path)
@@ -16,6 +18,15 @@ pub fn write(path: &Path, content: &str) -> crate::Result<()> {
         .map_err(|e| {
             let msg = format!("{:?}: {}", path, e);
             crate::Error::Io(msg)
+        })
+}
+
+pub fn set_file_mtime(path: &Path, mtime: i64) -> Result<()> {
+    let file_time = FileTime::from_unix_time(mtime, 0);
+    filetime::set_file_mtime(path, file_time)
+        .map_err(|e| {
+            let msg = format!("{:?}: {}", path, e);
+            Error::Io(msg)
         })
 }
 

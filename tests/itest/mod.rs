@@ -166,17 +166,13 @@ impl Client {
     pub fn try_checkout(&self, branch: &str) -> Result<()> {
         let repo = self.repository()?;
         let target_oid = repo.refs.get(branch)?;
-        let target_rev = Revision::build(repo, &target_oid)?
+        let target_rev = Revision::build(repo.clone(), &target_oid)?
             .into_rev()?;
 
         let checkout = commands::Checkout::build(self.workdir().to_path_buf())?;
         checkout.execute(branch)?;
 
-        let repo = self.repository()?;
-        let head = repo.local_head.get()?;
-        let curr_oid= repo.refs.get(head.branch()?)?;
-        let curr_rev = Revision::build(repo, &curr_oid)?
-            .into_rev()?;
+        let curr_rev = repo.into_rev()?;
         let rev_diff = target_rev.diff(&curr_rev)?;
         assert!(rev_diff.is_clean());
 

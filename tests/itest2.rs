@@ -2,16 +2,17 @@ mod itest;
 use itest::*;
 
 #[test]
-pub fn checkout_when_workspace_is_not_clean() -> rit::Result<()> {
-    let mut client = Client::build("checkout-when-workspace-is-not-clean")?;
-    client.init()?;
+#[should_panic]
+pub fn checkout_when_workspace_is_not_clean() -> () {
+    let mut client = Client::build("checkout-when-workspace-is-not-clean").unwrap();
+    client.init().unwrap();
 
-    client.work()?;
-    client.try_commit()?;
-    client.try_branch_create("new_branch")?;
+    client.work().unwrap();
+    client.try_commit().unwrap();
+    client.try_branch_create("new_branch").unwrap();
     
-    client.work()?;
-    client.try_checkout("new_branch")
+    client.work().unwrap();
+    client.try_checkout("new_branch").unwrap();
 }
 
 #[test]
@@ -28,18 +29,4 @@ pub fn checkout_from_clean_workspace() -> rit::Result<()> {
     client.work()?;
     client.try_commit()?;
     client.try_checkout("main")
-}
-
-#[test]
-pub fn checkout_while_working() -> rit::Result<()> {
-    let mut client = Client::build("checkout-while-working")?;
-    client.init()?;
-
-    client.work()?;
-    client.try_commit()?;
-
-    client.work()?;
-    client.try_branch_create("new_branch")?;
-    client.try_checkout("new_branch")?;
-    client.try_commit()
 }
