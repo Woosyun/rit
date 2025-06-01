@@ -44,12 +44,30 @@ impl Client {
         Repository::build(&self.workspace()?)
     }
 
-    pub fn init(&self) -> rit::Result<()> {
-        let ws = self.workspace()?;
-        Repository::init(&ws)
+    pub fn init(&self) -> Result<()> {
+        let cmd = rit::commands::Init::build(self.workspace()?.path().to_path_buf())?;
+        cmd.execute()
+    }
+    pub fn try_init(&self) -> Result<()> {
+        self.init()?;
+
+        let repo = self.workspace()?.path().join(Repository::name());
+        assert!(repo.exists());
+
+        let db = repo.join(Database::name());
+        assert!(db.exists());
+
+        let mut refs = repo.join(Refs::name());
+        refs.push(Refs::local());
+        assert!(refs.exists());
+
+        let local_head = repo.join(LocalHead::name());
+        assert!(local_head.exists());
+        Ok(())
     }
 
     pub fn work(&mut self) -> rit::Result<()> {
+        //why?
         utils::sleep_1_sec();
 
         let ws = self.workspace()?;
@@ -162,19 +180,33 @@ impl Client {
         Ok(())
     }
 
-    //일단은 branch 사이에서만 테스트 진행
     pub fn try_checkout(&self, branch: &str) -> Result<()> {
         let repo = self.repository()?;
+        let original_branch = repo.local_head.get()?
+            .branch()?.to_string();
+        let original_rev = repo.into_rev()?;
+
         let target_oid = repo.refs.get(branch)?;
         let target_rev = Revision::build(repo.clone(), &target_oid)?
             .into_rev()?;
 
         let checkout = commands::Checkout::build(self.workdir().to_path_buf())?;
         checkout.execute(branch)?;
+        assert_eq!(repo.local_head.get()?.branch()?, branch);
 
-        let curr_rev = repo.into_rev()?;
-        let rev_diff = target_rev.diff(&curr_rev)?;
-        assert!(rev_diff.is_clean());
+        //check whether checkout conducted
+        // but if original branch and target branch are same,
+        // then even if checkout didn't work,
+        // cannot check properly
+        let repo = self.repository()?;
+        let current_rev = repo.into_rev()?;
+        assert!(current_rev.diff(&target_rev)?.is_clean());
+
+        let original_oid = repo.refs.get(&original_branch)?;
+        let expected_original_rev = Revision::build(repo.clone(), &original_oid)?
+            .into_rev()?;
+        assert!(original_rev.diff(&expected_original_rev)?.is_clean());
+
 
         Ok(())
     }

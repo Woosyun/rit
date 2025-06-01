@@ -28,6 +28,12 @@ impl Refs {
             path 
         })
     }
+    pub fn name() -> &'static str {
+        "refs"
+    }
+    pub fn local() -> &'static str {
+        "local"
+    }
     pub fn init(repo: PathBuf) -> crate::Result<()> {
         let mut path = repo;
         path.push(REFS);

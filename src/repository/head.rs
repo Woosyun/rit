@@ -32,8 +32,6 @@ impl Head {
     }
 }
 
-const LOCAL_HEAD: &str = "LOCAL_HEAD";
-
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct LocalHead {
     path: PathBuf,
@@ -41,7 +39,7 @@ pub struct LocalHead {
 impl LocalHead {
     pub fn build(repo: PathBuf) -> Result<Self> {
         let mut path = repo;
-        path.push(LOCAL_HEAD);
+        path.push(LocalHead::name());
         if !path.exists() {
             return Err(Error::Repository("LOCAL_HEAD not found".into()));
         }
@@ -50,9 +48,12 @@ impl LocalHead {
             path
         })
     }
+    pub fn name() -> &'static str {
+        "LOCAL_HEAD"
+    }
     pub fn init(repo: PathBuf) -> Result<()> {
         let mut path = repo;
-        path.push(LOCAL_HEAD);
+        path.push(LocalHead::name());
 
         if !path.exists() {
             let lh = Self {

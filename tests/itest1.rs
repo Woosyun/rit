@@ -4,7 +4,7 @@ use itest::*;
 #[test]
 pub fn initialize_repository() -> rit::Result<()> {
     let user = Client::build("initialize-repository")?;
-    user.init()
+    user.try_init()
 }
 
 #[test]

@@ -25,6 +25,9 @@ pub mod prelude {
     pub use super::repository::{
         self,
         Repository,
+        Database,
+        head::{Head, LocalHead},
+        refs::Refs,
         Blob,
         Oid,
     };
