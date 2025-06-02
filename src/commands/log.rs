@@ -18,30 +18,25 @@ impl Log {
         })
     }
 
-    /*
-    pub fn execute(&self, branch: &str) -> Result<Vec<(Oid, repository::Commit)>> {
-        let mut result = Vec::new();
+    pub fn read_all_branches(&self) -> Result<Vec<Node>> {
+        let mut nodes = Vec::new();
 
-        let mut leaf = Some(self.repo.refs.get(branch)?);
-        while !leaf.is_none() {
-            let oid = leaf.unwrap();
-            let commit: repository::Commit = self.repo.db.retrieve(&oid)?;
-            result.push((oid, commit.clone()));
-
-            leaf = commit.parent().clone();
+        for branch in self.repo.refs.list_branches()? {
+            if self.repo.refs.contains(&branch) {
+                let oid = self.repo.refs.get(&branch)?;
+                nodes.push(self.node(&oid)?);
+            }
         }
 
-        Ok(result)
+        Ok(nodes)
     }
-    */
 
-    pub fn node(&self, branch: &str) -> Result<Node> {
-        let oid = self.repo.refs.get(branch)?;
-        let commit: Commit = self.repo.db.retrieve(&oid)?;
+    pub fn node(&self, oid: &Oid) -> Result<Node> {
+        let commit: Commit = self.repo.db.retrieve(oid)?;
         let node = Node {
             repo: &self.repo,
-            oid,
-            commit,
+            oid: oid.clone(),
+            commit
         };
 
         Ok(node)

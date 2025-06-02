@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use std::{
     path::PathBuf,
-    collections::HashSet,
 };
 
 pub struct Branch {
@@ -36,11 +35,5 @@ impl Branch {
         self.repo.refs.set(new_branch, oid)?;
 
         Ok(())
-    }
-
-    pub fn list(&self) -> Result<HashSet<String>> {
-        let branches = self.repo.refs.list_branches()?;
-
-        Ok(branches)
     }
 }
