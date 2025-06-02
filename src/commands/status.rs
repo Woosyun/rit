@@ -3,72 +3,76 @@ use crate::prelude::*;
 
 pub struct Status {
     ws: Workspace,
-    repo: Repository,
 }
 impl Status {
     pub fn build(workdir: PathBuf) -> crate::Result<Self> {
         let ws = Workspace::build(workdir)?;
-        let repo = Repository::build(&ws)?;
+
         Ok(Self {
             ws,
-            repo,
         })
     }
     
+    /*
     pub fn execute(&self) -> crate::Result<RevDiff> {
-        let prev_rev = self.repo.into_rev()?;
+        let prev_rev = Repository::build(&self.ws)?
+            .into_rev()?;
         let curr_rev = self.ws.into_rev()?;
 
         let rev_diff = prev_rev.diff(&curr_rev)?;
         Ok(rev_diff)
     }
-
-    // read working directory and report status about its repository
-
-    /*
-    pub fn scan(wd: PathBuf) -> Result<RepositoryStatus> {
-        let mut path = wd.clone();
-        if !path.exists() {
-            return Ok(RepositoryStatus::InvalidPath);
-        }
-        path.push(Repository::name());
-        if !path.exists() {
-            return Ok(RepositoryStatus::NotFound);
-        }
-
-        let ws = Workspace::build(wd)?;
-        let repo = Repository::build(&ws)?;
-        let head = repo.local_head.get()?;
-        if !head.is_branch() {
-            return Ok(RepositoryStatus::NotBranch);
-        }
-
-        Ok(RepositoryStatus::Normal)
-    }
     */
+
+    // todo: status able to represent initializations of repository
+    pub fn repository_status(&self) -> RepositoryStatus {
+        let repo = self.ws.path().join(Repository::name());
+        if !repo.exists() {
+            return RepositoryStatus::RepositoryNotFound;
+        }
+
+        let db = repo.join(Database::name());
+        if !db.exists() {
+            return RepositoryStatus::DatabaseNotFound;
+        }
+
+        let local_head = repo.join(LocalHead::name());
+        if !local_head.exists() {
+            return RepositoryStatus::LocalHeadNotFound;
+        }
+
+        let refs = repo.join(Refs::name()).join(Refs::local());
+        if !refs.exists() {
+            return RepositoryStatus::RefsNotFound;
+        }
+
+        //check localhead
+        let repo = Repository::build(&self.ws).unwrap();
+        if !repo.local_head.get()
+            .expect("something wrong with local_head")
+            .is_branch() {
+            return RepositoryStatus::OnRevision;
+        }
+            
+
+        RepositoryStatus::Normal
+    }
 }
 
 #[derive(Debug)]
 pub enum RepositoryStatus {
-    InvalidPath,
-    NotFound,
-    NotBranch,
+    RepositoryNotFound,
+    DatabaseNotFound,
+    LocalHeadNotFound,
+    RefsNotFound,
+    OnRevision,
     Normal
 }
 impl RepositoryStatus {
     pub fn is_repository_initialized(&self) -> bool {
         use RepositoryStatus::*;
         match self {
-            InvalidPath => false,
-            NotFound => false,
-            _ => true,
-        }
-    }
-    
-    pub fn is_path_valid(&self) -> bool {
-        use RepositoryStatus::*;
-        match self {
-            InvalidPath => false,
+            RepositoryNotFound => false,
             _ => true,
         }
     }

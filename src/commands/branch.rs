@@ -20,14 +20,13 @@ impl Branch {
     // create new branch and copy-paste head
     pub fn create(&self, new_branch: &str) -> Result<()> {
         if self.repo.refs.contains(new_branch) {
-            return Err(Error::Repository("branch already exists. Not supported yet".into()));
+            return Err(Error::Repository("branch is already exists.".into()));
         }
 
         // todo:
         // !!! what if repository is empty(= head is None)?
         // Current Refs does not have ability to handle None type.
         // Only Oid can be stored by Refs.
-        // => repository is never empty. == always there is head pointing a revision
         let head = self.repo.local_head.get()?;
         let oid = if head.is_branch() {
             &self.repo.refs.get(head.branch()?)?

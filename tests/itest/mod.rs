@@ -44,7 +44,7 @@ impl Client {
         Repository::build(&self.workspace()?)
     }
 
-    pub fn init(&self) -> Result<()> {
+    fn init(&self) -> Result<()> {
         let cmd = rit::commands::Init::build(self.workspace()?.path().to_path_buf())?;
         cmd.execute()
     }
@@ -63,10 +63,11 @@ impl Client {
 
         let local_head = repo.join(LocalHead::name());
         assert!(local_head.exists());
-        Ok(())
+
+        self.check_workspace_status()
     }
 
-    pub fn work(&mut self) -> rit::Result<()> {
+    pub fn try_work(&mut self) -> rit::Result<()> {
         //why?
         utils::sleep_1_sec();
 
@@ -121,7 +122,7 @@ impl Client {
             }
         }
 
-        Ok(())
+        self.check_workspace_status()
     }
 
     fn commit(&self) -> rit::Result<()> {
@@ -166,12 +167,14 @@ impl Client {
         self.modified.clear();
         self.removed.clear();
 
-        Ok(())
+        self.check_workspace_status()
     }
 
-    pub fn try_status(&self) -> Result<()> {
-        let status = commands::Status::build(self.workdir().to_path_buf())?;
-        let rev_diff = status.execute()?;
+    //check integrity of workspace?
+    pub fn check_workspace_status(&self) -> Result<()> {
+        let rev_diff = self.repository()?
+            .into_rev()?
+            .diff(&self.workspace()?.into_rev()?)?;
 
         assert_eq!(self.added, rev_diff.added, "comparing added files for one that was recorded and one returned by status command");
         assert_eq!(self.modified, rev_diff.modified, "comparing modified files for one that was recorded and one returned by status command");
