@@ -1,11 +1,7 @@
-use crate::{
-    workspace::Stat,
-    //repository::Blob,
-};
+use crate::prelude::*;
 use std::{
     collections::{HashSet, HashMap},
     path::{PathBuf, Path},
-    fmt::{self, Write},
 };
 //use serde::{Serialize, Deserialize};
 
@@ -19,6 +15,9 @@ impl Rev {
         Self(rev)
     }
 
+    pub fn get(&self, idx: &Path) -> Option<&Box<dyn Stat>> {
+        self.0.get(idx)
+    }
     pub fn get_mut(&mut self, idx: &Path) -> Option<&mut Box<dyn Stat>> {
         self.0.get_mut(idx)
     }
@@ -60,40 +59,5 @@ impl RevDiff {
     }
     pub fn is_clean(&self) -> bool {
         self.added.is_empty() && self.removed.is_empty() && self.modified.is_empty()
-    }
-}
-
-impl fmt::Display for RevDiff {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut output = String::new();
-        writeln!(&mut output, "added files:")?;
-        writeln!(&mut output,
-            "{}",
-            self.added
-                .iter()
-                .map(|p| format!("{:?}", p))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )?;
-        writeln!(&mut output, "removed files:")?;
-        writeln!(&mut output,
-            "{}",
-            self.removed
-                .iter()
-                .map(|p| format!("{:?}", p))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )?;
-        writeln!(&mut output, "modified files:")?;
-        writeln!(&mut output,
-            "{}",
-            self.modified
-                .iter()
-                .map(|p| format!("{:?}", p))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )?;
-
-        write!(f, "{}", output)
     }
 }

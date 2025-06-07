@@ -1,10 +1,7 @@
 pub mod rev;
 pub use rev::*;
 
-use crate::{
-    repository::{Repository, self, Oid},
-    workspace::Stat,
-};
+use crate::prelude::*;
 use std::{
     collections::HashMap,
     path::{PathBuf, Path},
@@ -14,6 +11,7 @@ use serde::{Serialize, Deserialize};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Revision {
     repo: Repository,
+    //oid: Oid,
     commit: repository::Commit
 }
 impl Revision {

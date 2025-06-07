@@ -21,13 +21,13 @@ impl Head {
     pub fn branch(&self) -> Result<&str> {
         match self {
             Head::Branch(branch) => Ok(branch),
-            _ => Err(Error::Repository("Head.branch method called on wrong spot".into())),
+            _ => Err(Error::Repository("Head is not branch".into())),
         }
     }
     pub fn oid(&self) -> Result<&Oid> {
         match self {
             Head::Oid(oid) => Ok(oid),
-            _ => Err(Error::Repository("Head.oid method called on wrong spot".into())),
+            _ => Err(Error::Repository("Head is not oid".into())),
         }
     }
 }

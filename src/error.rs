@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Error {
     Io(String),
     Workspace(String),
     Repository(String),
     InvalidData(String),
+    Revision(String),
     Unknown(String),
 }
 impl std::fmt::Display for Error {
@@ -15,6 +16,7 @@ impl std::fmt::Display for Error {
             Error::Workspace(s) => write!(f, "(workspace){}", s),
             Error::Repository(s) => write!(f, "(repository){}", s),
             Error::InvalidData(s) => write!(f, "Invalid data: {}", s),
+            Error::Revision(s) => write!(f, "{}", s),
             Error::Unknown(s) => write!(f, "(unknown){}", s),
         }
     }

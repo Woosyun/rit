@@ -220,4 +220,8 @@ impl Client {
 
         Ok(())
     }
+
+    //todo: 
+    // to test merge, 
+    // lower file handling ability might be needed
 }

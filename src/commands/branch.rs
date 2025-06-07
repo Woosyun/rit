@@ -22,10 +22,6 @@ impl Branch {
             return Err(Error::Repository("branch is already exists.".into()));
         }
 
-        // todo:
-        // !!! what if repository is empty(= head is None)?
-        // Current Refs does not have ability to handle None type.
-        // Only Oid can be stored by Refs.
         let head = self.repo.local_head.get()?;
         let oid = if head.is_branch() {
             &self.repo.refs.get(head.branch()?)?

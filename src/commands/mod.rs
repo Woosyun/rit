@@ -15,3 +15,6 @@ pub use log::*;
 
 pub mod branch;
 pub use branch::*;
+
+mod merge;
+pub use merge::*;
