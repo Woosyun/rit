@@ -1,38 +1,32 @@
 use sha2::{Sha256, Digest};
 use serde::{Serialize, Deserialize};
-use std::fmt;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct Oid([u8; 32]);
+pub struct Oid(String);
 impl Oid {
     pub fn build(content: &str) -> Self {
         let mut hasher = Sha256::new();
         hasher.update(content);
-        let result = hasher.finalize()
-            .into();
+        let hash = hasher.finalize();
 
-        Self(result) 
+        let mut hex = String::with_capacity(64);
+        for byte in hash {
+            use std::fmt::Write;
+            write!(&mut hex, "{:02x}", byte).unwrap();
+        }
+
+        debug_assert_eq!(hex.len(), 64);
+
+        Self(hex) 
     }
 
-    pub fn split(&self) -> (String, String) {
-        let mut hex = self.0
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<Vec<String>>();
-        let file = hex.split_off(2).join("");
-        let dir = hex.join("");
-
-        (dir, file)
+    pub fn split(&self) -> (&str, &str) {
+        self.0.split_at(4)
     }
 }
 
-impl fmt::Display for Oid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let hex_oid = self.0
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<Vec<_>>()
-            .join("");
-        write!(f, "{}", hex_oid)
+impl std::fmt::Display for Oid {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

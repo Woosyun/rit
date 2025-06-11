@@ -62,7 +62,7 @@ impl Merge {
                 }
 
                 let commit: repository::Commit = self.repo.db.retrieve(&oid)?;
-                if let Some(parent_oid) = commit.parent() {
+                for parent_oid in commit.parents() {
                     from_que.push_back(parent_oid.to_owned());
                 }
             }
@@ -80,7 +80,7 @@ impl Merge {
                 }
 
                 let commit: repository::Commit = self.repo.db.retrieve(&oid)?;
-                if let Some(parent_oid) = commit.parent() {
+                for parent_oid in commit.parents() {
                     to_que.push_back(parent_oid.to_owned());
                 }
             }
@@ -132,15 +132,15 @@ impl Merge {
 
     pub fn execute(&self) -> Result<()> {
         let target_oid = self.repo.refs.get(&self.target_branch.clone()?)?;
+        let original_branch = self.repo.local_head.get()?.branch()?.to_string();
+
         match self.find_base()? {
             FindBase::FastForward => {
-                //checkout
-                let org_branch = self.repo.local_head.get()?.branch()?.to_string();
                 let cmd = crate::commands::Checkout::build(self.ws.path().to_path_buf())?;
                 cmd.execute(&self.target_branch.clone()?)?;
-                self.repo.refs.set(&org_branch, &target_oid)?;
+                self.repo.refs.set(&original_branch, &target_oid)?;
                 let cmd = crate::commands::Checkout::build(self.ws.path().to_path_buf())?;
-                cmd.execute(&org_branch)?;
+                cmd.execute(&original_branch)?;
             },
             FindBase::Base(oid) => {
                 let from = self.repo.into_rev()?;
@@ -159,6 +159,11 @@ impl Merge {
                 for r in branch_diff.removed.iter() {
                     fs::remove_file(r)?;
                 }
+
+                let mut commit = commands::Commit::build(self.ws.path().to_path_buf())?;
+                commit.add_parent(target_oid);
+                commit.set_message(format!("{} merged {}", original_branch, self.target_branch.clone()?));
+                commit.execute()?;
             },
             _ => ()
         }

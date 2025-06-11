@@ -60,7 +60,9 @@ impl<'a> Iterator for Node<'a> {
     type Item = Node<'a>;
     
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(oid) = self.commit.parent() {
+        //follow main-ish?
+        //todo: fix
+        if let Some(oid) = self.commit.parents().get(0) {
             let parent: Commit = self.repo.db.retrieve(&oid)
                 .unwrap_or_else(|_| None)?;
             let parent_node= Node {

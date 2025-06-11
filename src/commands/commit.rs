@@ -7,7 +7,7 @@ use std::path::{PathBuf, Path};
 pub struct Commit {
     ws: Workspace,
     repo: Repository,
-    parent: Option<Oid>,
+    parent: Vec<Oid>,
     branch: String,
     message: String,
 }
@@ -23,11 +23,10 @@ impl Commit {
         } else {
             return Err(Error::Repository("cannot run commit on non-branch head".into()));
         };
-        let parent = if repo.refs.contains(&branch) {
-            Some(repo.refs.get(&branch)?)
-        } else {
-            None
-        };
+        let mut parent = Vec::new();
+        if repo.refs.contains(&branch) {
+            parent.push(repo.refs.get(&branch)?);
+        }
 
         let cmd = Self {
             ws,
@@ -38,6 +37,9 @@ impl Commit {
         };
 
         Ok(cmd)
+    }
+    pub fn add_parent(&mut self, parent: Oid) {
+        self.parent.push(parent);
     }
 
     pub fn set_message(&mut self, message: String) {

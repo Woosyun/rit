@@ -3,6 +3,12 @@
 mod fs;
 mod utils;
 
+mod worker;
+pub use worker::Worker;
+
+mod driver;
+pub use driver::Driver;
+
 use rand::prelude::*;
 use std::{
     path::{PathBuf, Path},
@@ -34,16 +40,6 @@ impl Client {
             removed: HashSet::new(),
         })
     }
-    pub fn workdir(&self) -> &Path {
-        self.tempdir.path()
-    }
-    pub fn workspace(&self) -> rit::Result<Workspace> {
-        Workspace::build(self.workdir().to_path_buf())
-    }
-    pub fn repository(&self) -> rit::Result<Repository> {
-        Repository::build(&self.workspace()?)
-    }
-
     fn init(&self) -> Result<()> {
         let cmd = rit::commands::Init::build(self.workspace()?.path().to_path_buf())?;
         cmd.execute()
@@ -68,60 +64,7 @@ impl Client {
     }
 
     pub fn try_work(&mut self) -> rit::Result<()> {
-        //why?
-        utils::sleep_1_sec();
-
-        let ws = self.workspace()?;
-        let curr_rev = ws.into_rev()
-            .map_err(|e| io::Error::new(io::ErrorKind::NotFound, e.to_string()))?;
-
-        let mut files = curr_rev.0.keys().cloned().collect::<Vec<_>>();
-        let mut rng = rand::rng();
-        files.shuffle(&mut rng);
-
-        let number_of_files = files.len();
-
-        //remove
-        let number_of_deletion = number_of_files/3;
-        for file in files.iter().take(number_of_deletion) {
-            self.removed.insert(file.to_path_buf());
-
-            let path = self.workdir().join(file);
-            if path.exists() {
-                fs::remove_file(&path)?;
-            }
-        }
-
-        //modify
-        let remaining_files = files
-            .iter()
-            .skip(number_of_deletion)
-            .cloned()
-            .collect::<Vec<_>>();
-        let number_of_modification = number_of_files/3;
-        for file in remaining_files.iter().take(number_of_modification) {
-            self.modified.insert(file.to_path_buf());
-
-            let path = self.workdir().join(&file);
-            fs::appendln(&path, "\n//modified for integration testing")?;
-        }
-
-        //add
-        let number_of_creation = if number_of_files < 10 {
-            10
-        } else {
-            number_of_files/3
-        };
-        for i in 0..number_of_creation {
-            let new_file = format!("new_file_{}_{}.txt", i, rng.random::<u32>());
-            self.added.insert(Path::new(&new_file).to_path_buf());
-
-            let path = self.workdir().join(new_file);
-            if !path.exists() {
-                fs::write(&path, "newly created for integration testing")?;
-            }
-        }
-
+        self.work_random()?;
         self.check_workspace_status()
     }
 
@@ -171,7 +114,7 @@ impl Client {
     }
 
     //check integrity of workspace?
-    pub fn check_workspace_status(&self) -> Result<()> {
+    fn check_workspace_status(&self) -> Result<()> {
         let rev_diff = self.repository()?
             .into_rev()?
             .diff(&self.workspace()?.into_rev()?)?;
@@ -221,7 +164,35 @@ impl Client {
         Ok(())
     }
 
-    //todo: 
-    // to test merge, 
-    // lower file handling ability might be needed
+    pub fn try_merge_branch(&self, to: &str) -> Result<()> {
+        let mut merge = commands::Merge::build(self.workdir().to_path_buf())?;
+        merge.set_target_branch(to.to_string());
+        merge.execute()?;
+
+        Ok(())
+    }
+}
+
+impl Driver for Client {
+    fn workdir(&self) -> &Path {
+        self.tempdir.path()
+    }
+    fn workspace(&self) -> Result<Workspace> {
+        Workspace::build(self.workdir().to_path_buf())
+    }
+    fn repository(&self) -> Result<Repository> {
+        Repository::build(&self.workspace()?)
+    }
+}
+
+impl Worker for Client {
+    fn added(&mut self) -> &mut HashSet<PathBuf> {
+        &mut self.added
+    }
+    fn modified(&mut self) -> &mut HashSet<PathBuf> {
+        &mut self.modified
+    }
+    fn removed(&mut self) -> &mut HashSet<PathBuf> {
+        &mut self.removed
+    }
 }
