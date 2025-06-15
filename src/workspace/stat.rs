@@ -16,17 +16,7 @@ pub trait Stat {
     fn set_oid(&mut self, oid: Oid);
     fn name(&self) -> &Name;
 
-    //fn clone_box(&self) -> Box<dyn Stat>;
-
     fn is_dir(&self) -> bool {
         self.mode() == DIRECTORY_MODE
     }
 }
-
-/*
-impl Clone for Box<dyn Stat> {
-    fn clone(&self) -> Box<dyn Stat> {
-        self.clone_box()
-    }
-}
-*/

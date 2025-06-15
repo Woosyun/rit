@@ -1,64 +1,56 @@
 use serde::{Serialize, Deserialize};
+use serde_json;
 use std::{
-    path::PathBuf,
+    fs,
+    path::{PathBuf, Path},
     collections::HashSet,
 };
-use crate::{
-    utils,
-    fs,
-    repository::Repository,
-};
+use crate::prelude::*;
 
 
 // .ignore file should be at workspace
 // so ignore file can be stored in each revision
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
-pub struct Ignore(HashSet<String>);
+pub struct Ignore{
+    path: PathBuf,
+    names: HashSet<PathBuf>,
+}
 impl Ignore {
     pub fn name() -> &'static str {
-        ".ignore"
+        ".ritignore"
     }
-    pub fn build(workdir: PathBuf) -> crate::Result<Self> {
-        let mut path = workdir;
+    pub fn new(path: PathBuf) -> Self {
+        let rit = Repository::name();
+        let rit = Path::new(rit).to_path_buf();
+        Self {
+            path,
+            names: HashSet::from([rit]),
+        }
+    }
+    pub fn build(path: PathBuf) -> crate::Result<Self> {
+        let mut path = path;
         path.push(Ignore::name());
         if !path.exists() {
-            return Ok(Ignore::default());
+            return Ok(Self::new(path));
         }
 
-        let content = fs::read_to_string(&path)?;
-        let ignore: Ignore = utils::encode(&content)
-            .map_err(|s| crate::Error::Repository(s))?;
+        let content = fs::read_to_string(&path)
+            .map_err(|e| Error::Ignore(e.to_string()))?;
+        let ignore: Ignore = serde_json::from_str(&content)
+            .map_err(|e| Error::Ignore(e.to_string()))?;
         Ok(ignore)
     }
-    pub fn add(repo: PathBuf, names: Vec<String>) -> crate::Result<()> {
-        let mut path = repo;
-        path.push(Ignore::name());
-        let mut ignore = if !path.exists() {
-            Ignore::default()
-        } else {
-            let content = fs::read_to_string(&path)?;
-            utils::encode(&content)
-                .map_err(|s| crate::Error::Repository(s))?
-        };
-
-        for name in names {
-            ignore.0.insert(name);
-        }
-
-        let content = utils::decode(&ignore)
-            .map_err(|s| crate::Error::Repository(s))?;
-        fs::write(&path, &content)
+    pub fn store(&self) -> Result<()> {
+        let rit_ignore = serde_json::to_string(self)
+            .map_err(|e| Error::Ignore(e.to_string()))?;
+        fs::write(&self.path, &rit_ignore)
+            .map_err(|e| Error::Ignore(e.to_string()))
     }
-    pub fn is_ignored(&self, name: &str) -> bool {
-        self.0.contains(name)
+    pub fn add(&mut self, index: PathBuf) {
+        self.names.insert(index);
     }
-}
-impl Default for Ignore {
-    fn default() -> Self {
-        let mut set = HashSet::new();
-        set.insert(Repository::name().to_string());
-
-        Self(set)
+    pub fn is_ignored(&self, index: &Path) -> bool {
+        self.names.contains(index)
     }
 }

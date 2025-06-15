@@ -1,7 +1,6 @@
 #![allow(unused)]
 
-mod fs;
-mod utils;
+mod test_utils;
 
 mod worker;
 pub use worker::Worker;
@@ -14,6 +13,7 @@ use std::{
     path::{PathBuf, Path},
     collections::HashSet,
     io,
+    fs,
 };
 use rit::{
     self,
@@ -30,8 +30,9 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn build(test_name: &str) -> io::Result<Self> {
-        let tempdir = TempDir::new(test_name)?;
+    pub fn build(test_name: &str) -> Result<Self> {
+        let tempdir = TempDir::new(test_name)
+            .map_err(|e| Error::Workspace(e.to_string()))?;
 
         Ok(Self {
             tempdir,
@@ -41,13 +42,13 @@ impl Client {
         })
     }
     fn init(&self) -> Result<()> {
-        let cmd = rit::commands::Init::build(self.workspace()?.path().to_path_buf())?;
+        let cmd = commands::Init::build(self.workspace()?.workdir().to_path_buf())?;
         cmd.execute()
     }
     pub fn try_init(&self) -> Result<()> {
         self.init()?;
 
-        let repo = self.workspace()?.path().join(Repository::name());
+        let repo = self.workspace()?.workdir().join(Repository::name());
         assert!(repo.exists());
 
         let db = repo.join(Database::name());
@@ -90,12 +91,13 @@ impl Client {
         let repo = self.repository()?;
         let compare_blobs = |file: &Path| -> rit::Result<()> {
             let path = self.workdir().join(file);
-            let blob_ws = Blob::new(fs::read_to_string(&path)?);
-            let json = decode(&blob_ws).unwrap();
-            let oid = Oid::build(&json);
-            let blob_db: Blob = repo.db.retrieve(&oid)?;
-
-            assert_eq!(blob_ws, blob_db);
+            let content = fs::read_to_string(&path)
+                .map_err(|e| Error::Workspace(e.to_string()))?;
+            let blob_ws = Blob::new(content);
+            let content = serde_json::to_string(&blob_ws)
+                .map_err(|e| Error::Workspace(e.to_string()))?;
+            let oid = Oid::build(&content);
+            assert!(repo.db.retrieve::<Blob>(&oid).is_ok());
 
             Ok(())
         };

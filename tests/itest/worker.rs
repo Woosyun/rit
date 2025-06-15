@@ -1,11 +1,11 @@
 use std::{
     path::{PathBuf, Path},
     collections::HashSet,
+    fs,
 };
 use rit::prelude::*;
 use super::{
-    utils,
-    fs,
+    test_utils,
     driver::Driver,
 };
 use rand::prelude::*;
@@ -29,7 +29,8 @@ pub trait Worker: Driver {
             let path = self.workdir().join(new_file);
             let content = format!("{:?}: newly created for integration test", new_file);
             if !path.exists() {
-                fs::write(&path, &content)?;
+                fs::write(&path, &content)
+                    .map_err(|e| Error::Workspace(e.to_string()))?;
             }
         }
 
@@ -41,7 +42,8 @@ pub trait Worker: Driver {
             self.modified().insert(file.to_path_buf());
 
             let path = self.workdir().join(&file);
-            fs::appendln(&path, "\n//modified for integration testing")?;
+            test_utils::appendln(&path, "\n//modified for integration testing")
+                .map_err(|e| Error::Workspace(e.to_string()))?;
         }
         Ok(())
     }
@@ -52,7 +54,8 @@ pub trait Worker: Driver {
 
             let path = self.workdir().join(file);
             if path.exists() {
-                fs::remove_file(&path)?;
+                fs::remove_file(&path)
+                    .map_err(|e| Error::Workspace(e.to_string()))?;
             }
         }
         Ok(())
@@ -67,7 +70,7 @@ pub trait Worker: Driver {
     }
 
     fn work_random(&mut self) -> Result<()> {
-        utils::sleep_1_sec();
+        test_utils::sleep_1_sec();
 
         let files = self.shuffle_files()?;
         let number_to_touch = files.len()/3;

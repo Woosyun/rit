@@ -7,12 +7,12 @@ use refs::*;
 pub mod database;
 pub use database::*;
 
-use crate::{
-    prelude::*,
+use crate::prelude::*;
+use serde::{Serialize, Deserialize};
+use std::{
+    collections::HashMap,
     fs,
 };
-use serde::{Serialize, Deserialize};
-use std::collections::HashMap;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Repository {
@@ -25,10 +25,10 @@ impl Repository {
         ".rit"
     }
     pub fn build(ws: &Workspace) -> crate::Result<Self> {
-        let mut path = ws.path().to_path_buf();
+        let mut path = ws.workdir().to_path_buf();
         path.push(Repository::name());
         if !path.exists() {
-            return Err(crate::Error::Repository(".rit folder not found".into()));
+            return Err(crate::Error::Repository("NOT FOUND".into()));
         }
 
         let db = Database::build(path.clone())?;
@@ -44,10 +44,11 @@ impl Repository {
         Ok(repo)
     }
     pub fn init(ws: &Workspace) -> crate::Result<()> {
-        let mut repo = ws.path().to_path_buf();
+        let mut repo = ws.workdir().to_path_buf();
         repo.push(Repository::name());
         if !repo.exists() {
-            fs::create_dir(&repo)?;
+            fs::create_dir(&repo)
+                .map_err(|e| Error::Repository(e.to_string()))?;
         }
 
         Database::init(repo.clone())?;

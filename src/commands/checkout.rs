@@ -1,8 +1,8 @@
-use crate::{
-    prelude::*,
+use crate::prelude::*;
+use std::{
     fs,
+    path::{PathBuf, Path},
 };
-use std::path::{PathBuf, Path};
 
 pub struct Checkout {
     ws: Workspace,
@@ -36,9 +36,11 @@ impl Checkout {
         let mtime = entry.mtime();
         let oid = entry.oid()?;
         let blob: Blob = self.repo.db.retrieve(oid)?;
-        let path = self.ws.path().join(index);
-        fs::write(&path, blob.content())?;
-        fs::set_file_mtime(&path, mtime)
+        let path = self.ws.workdir().join(index);
+        fs::write(&path, blob.content())
+            .map_err(|e| Error::Commands(e.to_string()))?;
+        utils::set_file_mtime(&path, mtime)
+            .map_err(|e| Error::Commands(e.to_string()))
     }
     
     pub fn execute(&self, branch: &str) -> crate::Result<()> {
@@ -55,8 +57,9 @@ impl Checkout {
             self.upsert_entry(&target_rev, m)?;
         }
         for r in rev_diff.removed.iter() {
-            let path = self.ws.path().join(r);
-            fs::remove_file(&path)?;
+            let path = self.ws.workdir().join(r);
+            fs::remove_file(&path)
+                .map_err(|e| Error::Commands(e.to_string()))?;
         }
 
         //clear empty directories

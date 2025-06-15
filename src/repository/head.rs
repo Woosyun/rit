@@ -1,9 +1,8 @@
-use std::path::PathBuf;
-use crate::{
-    prelude::*,
+use std::{
     fs,
-    utils
+    path::PathBuf,
 };
+use crate::prelude::*;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -65,16 +64,17 @@ impl LocalHead {
         Ok(())
     }
     pub fn get(&self) -> crate::Result<Head> {
-        let content = fs::read_to_string(&self.path)?;
-        let head: Head = utils::encode(&content)
-            .map_err(|_| Error::Repository("cannot parse head".into()))?;
+        let content = fs::read_to_string(&self.path)
+            .map_err(|e| Error::LocalHead(e.to_string()))?;
+        let head = serde_json::from_str(&content)
+            .map_err(|e| Error::LocalHead(e.to_string()))?;
         Ok(head)
     }
     fn set(&self, head: Head) -> crate::Result<()> {
-        let content = utils::decode(&head)
-            .map_err(|_| Error::Repository("cannot decode head".into()))?;
-        fs::lock_write(&self.path, &content)?;
-
+        let content = serde_json::to_string(&head)
+            .map_err(|e| Error::LocalHead(e.to_string()))?;
+        utils::lock_write(&self.path, &content)
+            .map_err(|e| Error::LocalHead(e.to_string()))?;
         Ok(())
     }
 

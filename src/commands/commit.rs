@@ -1,8 +1,8 @@
-use crate::{
-    prelude::*,
+use crate::prelude::*;
+use std::{
     fs,
+    path::{PathBuf, Path},
 };
-use std::path::{PathBuf, Path};
 
 pub struct Commit {
     ws: Workspace,
@@ -47,8 +47,9 @@ impl Commit {
     }
     
     fn store_blob_upsert_entry(&self, prev_rev: &mut Rev, curr_rev: &mut Rev, index: &Path) -> Result<()> {
-        let path = self.ws.path().join(&index);
-        let content = fs::read_to_string(&path)?;
+        let path = self.ws.workdir().join(&index);
+        let content = fs::read_to_string(&path)
+            .map_err(|e| Error::Workspace(e.to_string()))?;
         let blob = Blob::new(content);
         let oid = self.repo.db.store(&blob)?;
 
@@ -56,7 +57,7 @@ impl Commit {
         file.set_oid(oid);
 
         // since oid of entry in curr_rev is None if its content was not changed,
-        // prev_rev is used here.
+        // prev_rev should be used here.
         let entry = repository::Entry::build(file.as_ref())?;
         prev_rev.0.insert(index.to_path_buf(), Box::new(entry));
         Ok(())

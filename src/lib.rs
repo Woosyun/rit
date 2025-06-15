@@ -4,8 +4,6 @@ pub mod revision;
 pub mod utils;
 pub mod commands;
 
-pub mod fs;
-
 pub mod error;
 pub use error::*;
 
@@ -15,12 +13,7 @@ pub mod prelude {
         Workspace,
         Ignore,
         File,
-        stat::{
-            Stat,
-            Mode,
-            Mtime,
-            Name,
-        },
+        stat::*,
     };
     pub use super::repository::{
         self,
@@ -37,7 +30,7 @@ pub mod prelude {
         Rev,
         RevDiff,
     };
-    pub use super::utils::*;
     pub use super::commands;
     pub use super::error::*;
+    pub use super::utils::{self, *};
 }

@@ -1,8 +1,6 @@
-use crate::{
-    prelude::*,
-    fs,
-};
+use crate::prelude::*;
 use std::{
+    fs,
     path::{PathBuf, Path},
     collections::{VecDeque, HashSet},
 };
@@ -16,11 +14,12 @@ impl Merge {
     pub fn build(workdir: PathBuf) -> Result<Self> {
         let ws = Workspace::build(workdir)?;
         let repo = Repository::build(&ws)?;
-        let target_branch = Err(Error::Unknown("you have to set target branch".to_string()));
+        let target_branch = Err(Error::Commands("target branch is not set".to_string()));
 
         if !ws.into_rev()?
             .diff(&repo.into_rev()?)?
-            .is_clean() {
+            .is_clean() 
+        {
             return Err(Error::Workspace("workspace is not clean".to_string()));
         }
 
@@ -86,11 +85,11 @@ impl Merge {
             }
         }
 
-        Err(Error::Revision("cannot find base revision".to_string()))
+        Err(Error::Commands("cannot find base revision".to_string()))
     }
     fn branch_diff(&self, from: &Rev, from_diff: &RevDiff, to: &Rev, to_diff: &RevDiff) -> Result<RevDiff> {
         let mut rev_diff = RevDiff::new();
-        let conflict_error = Error::Revision("conflict detect".to_string());
+        let conflict_error = Error::Commands("conflict detect".to_string());
         for a in to_diff.added.iter() {
             if from_diff.removed.contains(a) {
                 return Err(conflict_error);
@@ -125,9 +124,11 @@ impl Merge {
         let mtime = entry.mtime();
         let oid = entry.oid()?;
         let blob: Blob = self.repo.db.retrieve(oid)?;
-        let path = self.ws.path().join(index);
-        fs::write(&path, blob.content())?;
-        fs::set_file_mtime(&path, mtime)
+        let path = self.ws.workdir().join(index);
+        fs::write(&path, blob.content())
+            .map_err(|e| Error::Commands(e.to_string()))?;
+        utils::set_file_mtime(&path, mtime)
+            .map_err(|e| Error::Commands(e.to_string()))
     }
 
     pub fn execute(&self) -> Result<()> {
@@ -136,11 +137,11 @@ impl Merge {
 
         match self.find_base()? {
             FindBase::FastForward => {
-                let cmd = crate::commands::Checkout::build(self.ws.path().to_path_buf())?;
-                cmd.execute(&self.target_branch.clone()?)?;
+                commands::Checkout::build(self.ws.workdir().to_path_buf())?
+                    .execute(&self.target_branch.clone()?)?;
                 self.repo.refs.set(&original_branch, &target_oid)?;
-                let cmd = crate::commands::Checkout::build(self.ws.path().to_path_buf())?;
-                cmd.execute(&original_branch)?;
+                commands::Checkout::build(self.ws.workdir().to_path_buf())?
+                    .execute(&original_branch)?;
             },
             FindBase::Base(oid) => {
                 let from = self.repo.into_rev()?;
@@ -157,10 +158,11 @@ impl Merge {
                     self.upsert_workspace(m, to.0.get(m).unwrap())?;
                 }
                 for r in branch_diff.removed.iter() {
-                    fs::remove_file(r)?;
+                    fs::remove_file(r)
+                        .map_err(|e| Error::Commands(e.to_string()))?;
                 }
 
-                let mut commit = commands::Commit::build(self.ws.path().to_path_buf())?;
+                let mut commit = commands::Commit::build(self.ws.workdir().to_path_buf())?;
                 commit.add_parent(target_oid);
                 commit.set_message(format!("{} merged {}", original_branch, self.target_branch.clone()?));
                 commit.execute()?;

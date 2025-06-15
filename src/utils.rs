@@ -1,12 +1,38 @@
-use serde::{Serialize, Deserialize};
-use serde_json;
+use std::{
+    fs,
+    io,
+    path::Path,
+};
+use filetime::FileTime;
 
-pub fn decode<'a, O: Serialize>(o: &O) -> Result<String, String> {
-    serde_json::to_string(o)
-        .map_err(|e| e.to_string())
+/*
+pub fn get_file_name(path: &Path) -> crate::Result<String> {
+    match path.file_name() {
+        Some(file_name) => {
+            let file_name = file_name
+                .to_str().unwrap()
+                .to_string();
+            Ok(file_name)
+        },
+        None => {
+            let f = format!("{:?}: cannot get file name. Maybe file name termiantes with ..", path);
+            Err(crate::Error::Workspace(f))
+        }
+    }
+}
+*/
+
+pub fn lock_write(file: &Path, content: &str) -> io::Result<()> {
+    let mut lockfile = file.to_path_buf();
+    lockfile.set_extension("lock");
+
+    fs::write(&lockfile, content)?;
+    fs::rename(&lockfile, file)?;
+
+    Ok(())
 }
 
-pub fn encode<'a, O: Deserialize<'a>>(content: &'a str) -> Result<O, String> {
-    serde_json::from_str(content)
-        .map_err(|e| e.to_string())
+pub fn set_file_mtime(path: &Path, mtime: i64) -> io::Result<()> {
+    let file_time = FileTime::from_unix_time(mtime, 0);
+    filetime::set_file_mtime(path, file_time)
 }

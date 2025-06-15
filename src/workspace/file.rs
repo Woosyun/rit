@@ -1,10 +1,9 @@
 use serde::{Serialize, Deserialize};
-use std::path::Path;
-use crate::{
-    workspace::stat::*,
+use std::{
+    path::Path,
     fs,
-    repository::Oid,
 };
+use crate::prelude::*;
 use filetime::FileTime;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -16,7 +15,13 @@ pub struct File {
 }
 impl File {
     pub fn build(path: &Path) -> crate::Result<Self> {
-        let metadata = fs::metadata(path)?;
+        if path.is_dir() {
+            let f = format!("Trying to build File object from directory {:?}", path);
+            return Err(Error::Workspace(f));
+        }
+
+        let metadata = fs::metadata(path)
+            .map_err(|e| Error::Workspace(e.to_string()))?;
         let mtime = FileTime::from_last_modification_time(&metadata)
             .unix_seconds();
         let mode = match metadata.permissions().readonly() {
@@ -24,7 +29,21 @@ impl File {
             _ => EXECUTABLE_FILE_MODE,
         };
 
-        let name = fs::get_file_name(path)?;
+        let name = match path.file_name() {
+            Some(oss) => {
+                match oss.to_str() {
+                    Some(str) => str.to_string(),
+                    None => {
+                        let f = format!("Error while stringify {:?}", path);
+                        return Err(Error::Workspace(f));
+                    }
+                }
+            },
+            None => {
+                let f = format!("Cannot get file name from {:?}", path);
+                return Err(Error::Workspace(f));
+            }
+        };
 
         let re = Self {
             name,

@@ -2,30 +2,26 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Error {
-    Io(String),
     Workspace(String),
+    Ignore(String),
     Repository(String),
-    InvalidData(String),
-    Revision(String),
-    Unknown(String),
+    Database(String),
+    Refs(String),
+    LocalHead(String),
+    Commands(String),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            Error::Io(s) => write!(f, "(io){}", s),
             Error::Workspace(s) => write!(f, "(workspace){}", s),
+            Error::Ignore(s) => write!(f, "(ignore){}", s),
             Error::Repository(s) => write!(f, "(repository){}", s),
-            Error::InvalidData(s) => write!(f, "Invalid data: {}", s),
-            Error::Revision(s) => write!(f, "{}", s),
-            Error::Unknown(s) => write!(f, "(unknown){}", s),
+            Error::Database(s) => write!(f, "(database){}", s),
+            Error::Refs(s) => write!(f, "(refs){}", s),
+            Error::LocalHead(s) => write!(f, "(local head){}", s),
+            Error::Commands(s) => write!(f, "(unknown){}", s),
         }
     }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-
-impl From<std::io::Error> for Error {
-    fn from(item: std::io::Error) -> Self {
-        Error::Io(item.to_string())
-    }
-}

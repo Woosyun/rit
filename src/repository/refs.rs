@@ -1,12 +1,9 @@
 use std::{
+    fs,
     path::PathBuf,
     collections::HashSet,
 };
-use crate::{
-    prelude::*,
-    utils,
-    fs,
-};
+use crate::prelude::*;
 use serde::{Serialize, Deserialize};
 
 const REFS: &str = "refs";
@@ -38,12 +35,14 @@ impl Refs {
         let mut path = repo;
         path.push(REFS);
         if !path.exists() {
-            fs::create_dir(&path)?;
+            fs::create_dir(&path)
+                .map_err(|e| Error::Refs(e.to_string()))?;
         }
 
         path.push(LOCAL);
         if !path.exists() {
-            fs::create_dir(&path)?;
+            fs::create_dir(&path)
+                .map_err(|e| Error::Refs(e.to_string()))?;
         }
         Ok(())
     }
@@ -60,8 +59,11 @@ impl Refs {
         path.push(LOCAL);
 
         let mut result = HashSet::new();
-        for entry in fs::read_dir(&path)? {
-            let entry = entry?;
+        let read_dir = fs::read_dir(&path)
+            .map_err(|e| Error::Refs(e.to_string()))?;
+        for entry in read_dir {
+            let entry = entry
+                .map_err(|e| Error::Refs(e.to_string()))?;
             let branch = entry.file_name()
                 .to_str().unwrap()
                 .to_string();
@@ -75,18 +77,12 @@ impl Refs {
         let mut path = self.path.clone();
         path.push(LOCAL);
         path.push(branch);
-        if !path.exists() {
-            let msg = format!("branch {} not found", branch);
-            return Err(crate::Error::Repository(msg));
-        }
+        let content = fs::read_to_string(&path)
+            .map_err(|e| Error::Refs(e.to_string()))?;
+        let tip = serde_json::from_str(&content)
+            .map_err(|e| Error::Refs(e.to_string()))?;
 
-        let latest_commit: Oid = fs::read_to_string(&path)
-            .map(|content| {
-                utils::encode(&content)
-                    .map_err(|e| crate::Error::Repository(e))
-            })??;
-
-        Ok(latest_commit)
+        Ok(tip)
     }
 
     pub fn set(&self, branch: &str, oid: &Oid) -> crate::Result<()> {
@@ -94,9 +90,10 @@ impl Refs {
         path.push(LOCAL);
         path.push(branch);
 
-        let oid = utils::decode(oid)
-            .map_err(|e| crate::Error::Repository(e))?;
-        fs::lock_write(&path, &oid)?;
+        let content = serde_json::to_string(oid)
+            .map_err(|e| Error::Refs(e.to_string()))?;
+        utils::lock_write(&path, &content)
+            .map_err(|e| Error::Refs(e.to_string()))?;
         Ok(())
     }
 }

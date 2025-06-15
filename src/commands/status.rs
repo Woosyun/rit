@@ -25,7 +25,7 @@ impl Status {
     */
 
     pub fn repository_status(&self) -> RepositoryStatus {
-        let repo = self.ws.path().join(Repository::name());
+        let repo = self.ws.workdir().join(Repository::name());
         if !repo.exists() {
             return RepositoryStatus::RepositoryNotFound;
         }
