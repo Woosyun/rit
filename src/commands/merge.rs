@@ -35,6 +35,7 @@ impl Merge {
         self.target_branch = Ok(branch);
     }
 
+    //todo: fix "Cannot find base" error
     fn find_base(&self) -> Result<FindBase> {
         let from = self.repo.refs.get(self.repo.local_head.get()?.branch()?)?;
         let from_str = from.to_string();
@@ -87,7 +88,7 @@ impl Merge {
 
         Err(Error::Commands("cannot find base revision".to_string()))
     }
-    fn branch_diff(&self, from: &Rev, from_diff: &RevDiff, to: &Rev, to_diff: &RevDiff) -> Result<RevDiff> {
+    fn diff_rev_diff(&self, from: &Rev, from_diff: &RevDiff, to: &Rev, to_diff: &RevDiff) -> Result<RevDiff> {
         let mut rev_diff = RevDiff::new();
         let conflict_error = Error::Commands("conflict detect".to_string());
         for a in to_diff.added.iter() {
@@ -147,9 +148,10 @@ impl Merge {
                 let from = self.repo.into_rev()?;
                 let base = Revision::build(self.repo.clone(), &oid)?.into_rev()?;
                 let to = Revision::build(self.repo.clone(), &target_oid)?.into_rev()?;
+
                 let from_diff = base.diff(&from)?;
                 let to_diff = base.diff(&to)?;
-                let branch_diff = self.branch_diff(&from, &from_diff, &to, &to_diff)?;
+                let branch_diff = self.diff_rev_diff(&from, &from_diff, &to, &to_diff)?;
 
                 for a in branch_diff.added.iter() {
                     self.upsert_workspace(a, to.0.get(a).unwrap())?;
@@ -158,7 +160,8 @@ impl Merge {
                     self.upsert_workspace(m, to.0.get(m).unwrap())?;
                 }
                 for r in branch_diff.removed.iter() {
-                    fs::remove_file(r)
+                    let path = self.ws.workdir().join(r);
+                    fs::remove_file(path)
                         .map_err(|e| Error::Commands(e.to_string()))?;
                 }
 

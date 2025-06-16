@@ -1,19 +1,17 @@
-#![allow(unused)]
+pub mod worker;
+pub use worker::*;
 
-mod test_utils;
+pub mod driver;
+pub use driver::*;
 
-mod worker;
-pub use worker::Worker;
+pub mod commander;
+pub use commander::*;
 
-mod driver;
-pub use driver::Driver;
-
-use rand::prelude::*;
 use std::{
     path::{PathBuf, Path},
     collections::HashSet,
-    io,
     fs,
+    fmt::Write,
 };
 use rit::{
     self,
@@ -41,11 +39,32 @@ impl Client {
             removed: HashSet::new(),
         })
     }
-    fn init(&self) -> Result<()> {
-        let cmd = commands::Init::build(self.workspace()?.workdir().to_path_buf())?;
-        cmd.execute()
+    #[allow(unused)]
+    pub fn print_status(&self) -> Result<()> {
+        let mut output = String::new();
+
+        let ws_rev = self.workspace()?
+            .into_rev()?;
+        writeln!(output, "\nall indices of workspace: ")
+            .map_err(|e| Error::Workspace(e.to_string()))?;
+        for (index, _) in ws_rev.0 {
+            writeln!(output, "{:?}", self.read_to_file(&index)?)
+                .map_err(|e| Error::Workspace(e.to_string()))?;
+        }
+
+        writeln!(output, "added: {:?}", self.added)
+            .map_err(|e| Error::Workspace(e.to_string()))?;
+        writeln!(output, "modified: {:?}", self.modified)
+            .map_err(|e| Error::Workspace(e.to_string()))?;
+        writeln!(output, "removed: {:?}", self.removed)
+            .map_err(|e| Error::Workspace(e.to_string()))?;
+
+        
+        println!("{output}");
+        Ok(())
     }
     pub fn try_init(&self) -> Result<()> {
+        println!("try init");
         self.init()?;
 
         let repo = self.workspace()?.workdir().join(Repository::name());
@@ -65,41 +84,41 @@ impl Client {
     }
 
     pub fn try_work(&mut self) -> rit::Result<()> {
+        println!("try to work");
         self.work_random()?;
         self.check_workspace_status()
     }
 
-    fn commit(&self) -> rit::Result<()> {
-        let mut cmd = rit::commands::Commit::build(self.workdir().to_path_buf())?;
-        let message = format!("commit-{}", rand::rng().random::<u32>());
-        cmd.set_message(message);
-        cmd.execute()
-    }
     pub fn try_commit(&mut self) -> rit::Result<()> {
+        println!("try to commit");
         self.commit()?;
 
         //check deletion worked
-        for file in self.removed.iter() {
-            let path = self.workdir().join(file);
+        for index in self.removed.iter() {
+            let path = self.workdir().join(index);
             if path.exists() {
-                let f = format!("{:?} not removed", file);
+                let f = format!("{:?} was not removed", index);
                 return Err(rit::Error::Workspace(f));
             }
         }
 
         //check addition/modification worked
         let repo = self.repository()?;
-        let compare_blobs = |file: &Path| -> rit::Result<()> {
-            let path = self.workdir().join(file);
+        let compare_blobs = |index: &Path| -> rit::Result<()> {
+            let path = self.workdir().join(index);
             let content = fs::read_to_string(&path)
                 .map_err(|e| Error::Workspace(e.to_string()))?;
             let blob_ws = Blob::new(content);
             let content = serde_json::to_string(&blob_ws)
                 .map_err(|e| Error::Workspace(e.to_string()))?;
             let oid = Oid::build(&content);
-            assert!(repo.db.retrieve::<Blob>(&oid).is_ok());
 
-            Ok(())
+            if repo.db.retrieve::<Blob>(&oid).is_err() {
+                let f = format!("file {:?} is not in the database", index);
+                Err(Error::Database(f))
+            } else {
+                Ok(())
+            }
         };
         for file in self.added.iter() {
             compare_blobs(file)?;
@@ -129,6 +148,7 @@ impl Client {
     }
 
     pub fn try_checkout(&self, branch: &str) -> Result<()> {
+        println!("try to checkout to '{}'", branch);
         let repo = self.repository()?;
         let original_branch = repo.local_head.get()?
             .branch()?.to_string();
@@ -138,8 +158,7 @@ impl Client {
         let target_rev = Revision::build(repo.clone(), &target_oid)?
             .into_rev()?;
 
-        let checkout = commands::Checkout::build(self.workdir().to_path_buf())?;
-        checkout.execute(branch)?;
+        self.checkout(branch)?;
         assert_eq!(repo.local_head.get()?.branch()?, branch);
 
         //check whether checkout conducted
@@ -160,16 +179,15 @@ impl Client {
     }
 
     pub fn try_branch_create(&self, new_branch: &str) -> Result<()> {
-        let branch = commands::Branch::build(self.workdir().to_path_buf())?;
-        branch.create(new_branch)?;
+        println!("try to create branch '{}'", new_branch);
+        self.create_branch(new_branch)?;
 
         Ok(())
     }
 
     pub fn try_merge_branch(&self, to: &str) -> Result<()> {
-        let mut merge = commands::Merge::build(self.workdir().to_path_buf())?;
-        merge.set_target_branch(to.to_string());
-        merge.execute()?;
+        println!("try to merge branch '{}'", to);
+        self.merge(to)?;
 
         Ok(())
     }
@@ -198,3 +216,5 @@ impl Worker for Client {
         &mut self.removed
     }
 }
+
+impl Commander for Client {}

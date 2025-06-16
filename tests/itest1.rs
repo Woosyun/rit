@@ -1,3 +1,10 @@
+/*
+* test cases for various task scenarios
+*
+* since change can be discovered only when mtime is different,
+* calling sleep_1_sec() between works is neccessary
+*/
+
 mod itest;
 use itest::*;
 
@@ -15,6 +22,8 @@ pub fn work_in_main_branch() -> rit::Result<()> {
     client.try_work()?;
     client.try_commit()?;
 
+    client.sleep_1_sec();
+
     client.try_work()?;
     client.try_commit()
 }
@@ -28,6 +37,8 @@ pub fn try_to_work_with_another_branch_when_workspace_is_not_clean() -> () {
     client.try_work().unwrap();
     client.try_commit().unwrap();
     client.try_branch_create("new_branch").unwrap();
+
+    client.sleep_1_sec();
     
     client.try_work().unwrap();
     client.try_checkout("new_branch").unwrap();
@@ -43,6 +54,8 @@ pub fn work_with_another_branch() -> rit::Result<()> {
     client.try_branch_create("new_branch")?;
     client.try_checkout("new_branch")?;
 
+    client.sleep_1_sec();
+
     client.try_work()?;
     client.try_commit()?;
     client.try_checkout("main")
@@ -55,10 +68,14 @@ pub fn work_with_multiple_branches() -> rit::Result<()> {
     client.try_work()?;
     client.try_commit()?;
 
+    client.sleep_1_sec();
+
     client.try_branch_create("branch_0")?;
     client.try_checkout("branch_0")?;
     client.try_work()?;
     client.try_commit()?;
+
+    client.sleep_1_sec();
 
     client.try_branch_create("branch_0_0")?;
     client.try_checkout("branch_0_0")?;
@@ -69,54 +86,6 @@ pub fn work_with_multiple_branches() -> rit::Result<()> {
     client.try_checkout("branch_0")
 }
 
-//merge
-#[test]
-pub fn merge_compatible_branches() -> rit::Result<()> {
-    let mut client = Client::build("merge-compatible-branches")?;
-    client.try_init()?;
-
-    client.try_work()?;
-    println!("initial commit");
-    client.try_commit()?;
-    
-    //select files
-    let files = client.shuffle_files()?;
-    let number_to_touch = files.len()/4;
-    let mut files_to_remove = Vec::with_capacity(number_to_touch);
-    let mut files_to_modify1 = Vec::with_capacity(number_to_touch);
-    let mut files_to_modify2 = Vec::with_capacity(number_to_touch);
-    for (i, file) in files.iter().enumerate() {
-        if i < number_to_touch {
-            files_to_remove.push(file);
-        } else if i < 2 * number_to_touch {
-            files_to_modify1.push(file);
-        } else if i < 3 * number_to_touch {
-            files_to_modify2.push(file);
-        } else {
-            break;
-        }
-    }
-
-    client.try_branch_create("branch")?;
-    println!("checkout to 'branch' branch");
-    client.try_checkout("branch")?;
-    client.modify(&files_to_modify1)?;
-    client.remove(&files_to_remove)?;
-    client.add(number_to_touch)?;
-    println!("commit on 'branch' branch");
-    client.try_commit()?;
-
-    println!("checkout to 'main' branch");
-    client.try_checkout("main")?;
-    client.modify(&files_to_modify2)?;
-    client.remove(&files_to_remove)?;
-    client.add(number_to_touch)?;
-    println!("commit on 'main' branch");
-    client.try_commit()?;
-
-    client.try_merge_branch("branch")?;
-    Ok(())
-}
 #[test]
 #[should_panic]
 pub fn merge_conflict_occurred() {
@@ -126,31 +95,93 @@ pub fn merge_conflict_occurred() {
     client.try_work().unwrap();
     client.try_commit().unwrap();
 
-    let files = client.shuffle_files().unwrap();
-    let number_to_touch = files.len()/4;
-    let mut files_to_remove = Vec::with_capacity(number_to_touch);
-    let mut files_to_modify = Vec::with_capacity(number_to_touch);
-    for (i, file) in files.iter().enumerate() {
+    let indices = client.shuffle_files().unwrap();
+    let number_to_touch = indices.len()/4;
+    let mut indices_to_remove = Vec::with_capacity(number_to_touch);
+    let mut indices_to_modify = Vec::with_capacity(number_to_touch);
+    for (i, index) in indices.into_iter().enumerate() {
         if i < number_to_touch {
-            files_to_remove.push(file);
+            indices_to_remove.push(index);
         } else if i < 2 * number_to_touch {
-            files_to_modify.push(file);
+            indices_to_modify.push(index);
         } else {
             break;
         }
     }
+
+    client.sleep_1_sec();
+
     client.try_branch_create("branch").unwrap();
     client.try_checkout("branch").unwrap();
-    client.modify(&files_to_modify).unwrap();
-    client.remove(&files_to_remove).unwrap();
-    client.add(number_to_touch).unwrap();
+    for index in indices_to_modify.iter() {
+        client.modify(index).unwrap();
+    }
+    for index in indices_to_remove.iter() {
+        client.remove(index).unwrap();
+    }
     client.try_commit().unwrap();
 
+    client.sleep_1_sec();
+
     client.try_checkout("main").unwrap();
-    client.modify(&files_to_remove).unwrap();
-    client.remove(&files_to_modify).unwrap();
-    client.add(number_to_touch).unwrap();
+    for index in indices_to_modify.iter() {
+        client.remove(index).unwrap();
+    }
+    for index in indices_to_remove.iter() {
+        client.modify(index).unwrap();
+    }
     client.try_commit().unwrap();
 
     client.try_merge_branch("branch").unwrap();
+}
+
+#[test]
+fn merge_compatible_branches() -> rit::Result<()> {
+    let mut client = Client::build("merge-compatible-branches")?;
+    client.try_init()?;
+
+    client.try_work()?;
+    client.try_commit()?;
+    
+    //select files
+    let indices = client.shuffle_files()?;
+    let number_to_touch = indices.len()/4;
+    let mut indices_to_remove = Vec::with_capacity(number_to_touch);
+    let mut indices_to_modify1 = Vec::with_capacity(number_to_touch);
+    let mut indices_to_modify2 = Vec::with_capacity(number_to_touch);
+    for (i, index) in indices.iter().enumerate() {
+        if i < number_to_touch {
+            indices_to_remove.push(index);
+        } else if i < 2 * number_to_touch {
+            indices_to_modify1.push(index);
+        } else if i < 3 * number_to_touch {
+            indices_to_modify2.push(index);
+        } else {
+            break;
+        }
+    }
+
+    client.sleep_1_sec();
+
+    client.try_branch_create("branch")?;
+    client.try_checkout("branch")?;
+    for index in indices_to_modify1 {
+        client.modify(index)?;
+    }
+    for index in indices_to_remove {
+        client.remove(index)?;
+    }
+
+    client.try_commit()?; // errorneous!!
+    
+    client.sleep_1_sec();
+
+    client.try_checkout("main")?;
+    for index in indices_to_modify2 {
+        client.modify(index)?;
+    }
+    client.try_commit()?;
+
+    client.try_merge_branch("branch")?;
+    Ok(())
 }

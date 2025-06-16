@@ -2,12 +2,10 @@ use std::{
     path::{PathBuf, Path},
     collections::HashSet,
     fs,
+    io::Write,
 };
 use rit::prelude::*;
-use super::{
-    test_utils,
-    driver::Driver,
-};
+use super::driver::Driver;
 use rand::prelude::*;
 
 pub trait Worker: Driver {
@@ -15,88 +13,66 @@ pub trait Worker: Driver {
     fn modified(&mut self) -> &mut HashSet<PathBuf>;
     fn removed(&mut self) -> &mut HashSet<PathBuf>;
 
-    fn add(&mut self, number_of_creation: usize) -> Result<HashSet<PathBuf>> {
-        let mut rng = rand::rng();
-        let mut files = HashSet::new();
+    fn add(&mut self) -> Result<PathBuf> {
+        let index = format!("{}.txt", rand::rng().random::<u32>());
+        let index = Path::new(&index);
+        self.added().insert(index.to_path_buf());
+        let path = self.workdir().join(index);
+        let content = format!("{:?}: newly created for integration test", index);
+        fs::write(&path, &content)
+            .map_err(|e| Error::Workspace(e.to_string()))?;
 
-        for i in 0..number_of_creation {
-            let new_file = format!("new_file_{}_{}.txt", i, rng.random::<u32>());
-            let new_file = Path::new(&new_file);
-            println!("create file {:?}", new_file);
-            self.added().insert(new_file.to_path_buf());
-            files.insert(new_file.to_path_buf());
-
-            let path = self.workdir().join(new_file);
-            let content = format!("{:?}: newly created for integration test", new_file);
-            if !path.exists() {
-                fs::write(&path, &content)
-                    .map_err(|e| Error::Workspace(e.to_string()))?;
-            }
-        }
-
-        Ok(files)
+        Ok(index.to_path_buf())
     }
-    fn modify(&mut self, indices: &Vec<&PathBuf>) -> Result<()> {
-        for file in indices {
-            println!("modify file: {:?}", file);
-            self.modified().insert(file.to_path_buf());
+    fn modify(&mut self, index: &Path) -> Result<()> {
+        self.modified().insert(index.to_path_buf());
+        let path = self.workdir().join(index);
 
-            let path = self.workdir().join(&file);
-            test_utils::appendln(&path, "\n//modified for integration testing")
-                .map_err(|e| Error::Workspace(e.to_string()))?;
-        }
+        let mut fd = fs::OpenOptions::new().append(true).open(&path)
+            .map_err(|e| Error::Workspace(e.to_string()))?;
+        writeln!(fd, "{}", "\n//modified for integration testing")
+            .map_err(|e| Error::Workspace(e.to_string()))?;
+
         Ok(())
     }
-    fn remove(&mut self, indices: &Vec<&PathBuf>) -> Result<()> {
-        for file in indices {
-            println!("remove file: {:?}", file);
-            self.removed().insert(file.to_path_buf());
+    fn remove(&mut self, index: &Path) -> Result<()> {
+        self.removed().insert(index.to_path_buf());
 
-            let path = self.workdir().join(file);
-            if path.exists() {
-                fs::remove_file(&path)
-                    .map_err(|e| Error::Workspace(e.to_string()))?;
-            }
-        }
+        let path = self.workdir().join(index);
+        fs::remove_file(&path)
+            .map_err(|e| Error::Workspace(e.to_string()))?;
         Ok(())
     }
 
     fn shuffle_files(&self) -> Result<Vec<PathBuf>> {
         let rev = self.workspace()?.into_rev()?;
         let mut rng = rand::rng();
-        let mut files = rev.0.keys().cloned().collect::<Vec<_>>();
-        files.shuffle(&mut rng);
-        Ok(files)
+        let mut indices = rev.0.keys().cloned().collect::<Vec<_>>();
+        indices.shuffle(&mut rng);
+        Ok(indices)
     }
 
     fn work_random(&mut self) -> Result<()> {
-        test_utils::sleep_1_sec();
-
-        let files = self.shuffle_files()?;
-        let number_to_touch = files.len()/3;
-        let mut files_to_modify = Vec::with_capacity(number_to_touch);
-        let mut files_to_remove = Vec::with_capacity(number_to_touch);
-
-        for (i, file) in files.iter().enumerate() {
+        let indices = self.shuffle_files()?;
+        let number_to_touch = indices.len()/3;
+        for (i, index) in indices.iter().enumerate() {
             if i < number_to_touch {
-                files_to_remove.push(file);
+                self.remove(index)?;
             } else if i < 2 * number_to_touch {
-                files_to_modify.push(file);
+                self.modify(index)?;
             } else {
                 break;
             }
         }
 
-        self.remove(&files_to_remove)?;
-        self.modify(&files_to_modify)?;
-
-        //add
-        let number_of_creation = if files.len() < 10 {
+        let number_of_creation = if indices.len() < 10 {
             10
         } else {
             number_to_touch
         };
-        self.add(number_of_creation)?;
+        for _ in 0..number_of_creation {
+            self.add()?;
+        }
 
         Ok(())
     }

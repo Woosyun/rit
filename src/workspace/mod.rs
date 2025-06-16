@@ -42,7 +42,6 @@ impl Workspace {
         &self.workdir
     }
 
-    //todo: fix!
     pub fn get_ancestors(&self, index: &Path) -> crate::Result<Vec<String>> {
         let mut ancestors = Vec::new();
         for p in index.ancestors() {
