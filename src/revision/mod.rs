@@ -1,6 +1,9 @@
 pub mod rev;
 pub use rev::*;
 
+pub mod rev_diff;
+pub use rev_diff::*;
+
 use crate::prelude::*;
 use std::{
     collections::HashMap,

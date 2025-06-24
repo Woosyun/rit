@@ -1,15 +1,15 @@
 use crate::prelude::*;
 use std::{
-    collections::{HashSet, HashMap},
+    collections::HashMap,
     path::{PathBuf, Path},
 };
 //use serde::{Serialize, Deserialize};
 
 pub trait IntoRev {
-    fn into_rev(&self) -> crate::Result<Rev>;
+    fn into_rev(&self) -> Result<Rev>;
 }
 
-pub struct Rev(pub HashMap<PathBuf, Box<dyn Stat>>);
+pub struct Rev(HashMap<PathBuf, Box<dyn Stat>>);
 impl Rev {
     pub fn new(rev: HashMap<PathBuf, Box<dyn Stat>>) -> Self {
         Self(rev)
@@ -42,22 +42,6 @@ impl Rev {
         Ok(rev_diff)
     }
 }
-
-#[derive(PartialEq, Debug)]
-pub struct RevDiff {
-    pub added: HashSet<PathBuf>,
-    pub removed: HashSet<PathBuf>,
-    pub modified: HashSet<PathBuf>,
-}
-impl RevDiff {
-    pub fn new() -> Self {
-        Self {
-            added: HashSet::new(),
-            removed: HashSet::new(),
-            modified: HashSet::new(),
-        }
-    }
-    pub fn is_clean(&self) -> bool {
-        self.added.is_empty() && self.removed.is_empty() && self.modified.is_empty()
-    }
+impl Iterator for Rev {
+    fn next(&mut self) ->  
 }

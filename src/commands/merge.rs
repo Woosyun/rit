@@ -38,27 +38,24 @@ impl Merge {
     //todo: fix "Cannot find base" error
     fn find_base(&self) -> Result<FindBase> {
         let from = self.repo.refs.get(self.repo.local_head.get()?.branch()?)?;
-        let from_str = from.to_string();
         let to = self.repo.refs.get(&self.target_branch.clone()?)?;
-        let to_str = to.to_string();
 
         let mut from_seen = HashSet::new();
-        let mut from_que = VecDeque::from([from]);
+        let mut from_que = VecDeque::from([from.clone()]);
         let mut to_seen = HashSet::new();
-        let mut to_que = VecDeque::from([to]);
+        let mut to_que = VecDeque::from([to.clone()]);
 
         while !from_que.is_empty() || !to_que.is_empty() {
             if let Some(oid) = from_que.pop_front() {
-                let oid_str = oid.to_string();
-                if from_seen.insert(oid_str.clone()) {
+                if from_seen.insert(oid.clone()) {
                     continue;
                 }
-                if from_seen.contains(&to_str) {
+                if from_seen.contains(&to) {
                     return Ok(FindBase::AlreadyUpToDate);
                 }
 
-                if to_seen.contains(&oid_str) {
-                    return Ok(FindBase::Base(oid));
+                if to_seen.contains(&oid) {
+                    return Ok(FindBase::Base(oid.clone()));
                 }
 
                 let commit: repository::Commit = self.repo.db.retrieve(&oid)?;
@@ -67,15 +64,14 @@ impl Merge {
                 }
             }
             if let Some(oid) = to_que.pop_front() {
-                let oid_str = oid.to_string();
-                if to_seen.insert(oid_str.clone()) {
+                if to_seen.insert(oid.clone()) {
                     continue;
                 }
-                if to_seen.contains(&from_str) {
+                if to_seen.contains(&from) {
                     return Ok(FindBase::FastForward);
                 }
 
-                if from_seen.contains(&oid_str) {
+                if from_seen.contains(&oid) {
                     return Ok(FindBase::Base(oid));
                 }
 
@@ -95,7 +91,7 @@ impl Merge {
             if from_diff.removed.contains(a) {
                 return Err(conflict_error);
             } else if from_diff.added.contains(a) || from_diff.modified.contains(a) {
-                if from.0.get(a).unwrap().oid()? != to.0.get(a).unwrap().oid()? {
+                if from.get(a).unwrap().oid()? != to.get(a).unwrap().oid()? {
                     return Err(conflict_error);
                 }
             }
@@ -109,7 +105,7 @@ impl Merge {
         }
         for m in to_diff.modified.iter() {
             if from_diff.added.contains(m) || from_diff.modified.contains(m) {
-                if from.0.get(m).unwrap().oid()? != to.0.get(m).unwrap().oid()? {
+                if from.get(m).unwrap().oid()? != to.get(m).unwrap().oid()? {
                     return Err(conflict_error);
                 }
             } else if from_diff.removed.contains(m) {
@@ -154,10 +150,10 @@ impl Merge {
                 let branch_diff = self.diff_rev_diff(&from, &from_diff, &to, &to_diff)?;
 
                 for a in branch_diff.added.iter() {
-                    self.upsert_workspace(a, to.0.get(a).unwrap())?;
+                    self.upsert_workspace(a, to.get(a).unwrap())?;
                 }
                 for m in branch_diff.modified.iter() {
-                    self.upsert_workspace(m, to.0.get(m).unwrap())?;
+                    self.upsert_workspace(m, to.get(m).unwrap())?;
                 }
                 for r in branch_diff.removed.iter() {
                     let path = self.ws.workdir().join(r);
