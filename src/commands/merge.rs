@@ -38,7 +38,10 @@ impl Merge {
     //todo: fix "Cannot find base" error
     fn find_base(&self) -> Result<FindBase> {
         let from = self.repo.refs.get(self.repo.local_head.get()?.branch()?)?;
-        let to = self.repo.refs.get(&self.target_branch.clone()?)?;
+        //let to = self.repo.refs.get(self.target_branch.as_ref().map_err(|e| e.clone())?)?;
+        let to = self.target_branch.as_ref()
+            .map_err(|e| e.clone())
+            .map(|branch| self.repo.refs.get(branch))??;
 
         let mut from_seen = HashSet::new();
         let mut from_que = VecDeque::from([from.clone()]);
@@ -47,14 +50,11 @@ impl Merge {
 
         while !from_que.is_empty() || !to_que.is_empty() {
             if let Some(oid) = from_que.pop_front() {
-                if from_seen.insert(oid.clone()) {
+                if !from_seen.insert(oid.clone()) {
                     continue;
-                }
-                if from_seen.contains(&to) {
+                } else if from_seen.contains(&to) {
                     return Ok(FindBase::AlreadyUpToDate);
-                }
-
-                if to_seen.contains(&oid) {
+                } else if to_seen.contains(&oid) {
                     return Ok(FindBase::Base(oid.clone()));
                 }
 
@@ -64,7 +64,7 @@ impl Merge {
                 }
             }
             if let Some(oid) = to_que.pop_front() {
-                if to_seen.insert(oid.clone()) {
+                if !to_seen.insert(oid.clone()) {
                     continue;
                 }
                 if to_seen.contains(&from) {
@@ -84,6 +84,7 @@ impl Merge {
 
         Err(Error::Commands("cannot find base revision".to_string()))
     }
+
     fn diff_rev_diff(&self, from: &Rev, from_diff: &RevDiff, to: &Rev, to_diff: &RevDiff) -> Result<RevDiff> {
         let mut rev_diff = RevDiff::new();
         let conflict_error = Error::Commands("conflict detect".to_string());
@@ -122,7 +123,7 @@ impl Merge {
         let oid = entry.oid()?;
         let blob: Blob = self.repo.db.retrieve(oid)?;
         let path = self.ws.workdir().join(index);
-        fs::write(&path, blob.content())
+        fs::write(&path, blob)
             .map_err(|e| Error::Commands(e.to_string()))?;
         utils::set_file_mtime(&path, mtime)
             .map_err(|e| Error::Commands(e.to_string()))

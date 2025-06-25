@@ -32,12 +32,12 @@ impl Checkout {
     }
 
     fn upsert_entry(&self, target_rev: &Rev, index: &Path) -> Result<()> {
-        let entry = target_rev.0.get(index).unwrap();
+        let entry = target_rev.get(index).unwrap();
         let mtime = entry.mtime();
         let oid = entry.oid()?;
         let blob: Blob = self.repo.db.retrieve(oid)?;
         let path = self.ws.workdir().join(index);
-        fs::write(&path, blob.content())
+        fs::write(&path, blob)
             .map_err(|e| Error::Commands(e.to_string()))?;
         utils::set_file_mtime(&path, mtime)
             .map_err(|e| Error::Commands(e.to_string()))

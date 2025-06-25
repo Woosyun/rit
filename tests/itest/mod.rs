@@ -47,7 +47,7 @@ impl Client {
             .into_rev()?;
         writeln!(output, "\nall indices of workspace: ")
             .map_err(|e| Error::Workspace(e.to_string()))?;
-        for (index, _) in ws_rev.0 {
+        for (index, _) in ws_rev {
             writeln!(output, "{:?}", self.read_to_file(&index)?)
                 .map_err(|e| Error::Workspace(e.to_string()))?;
         }
@@ -165,7 +165,7 @@ impl Client {
         // but if original branch and target branch are same,
         // then even if checkout didn't work,
         // cannot check properly
-        let repo = self.repository()?;
+        //let repo = self.repository()?;
         let current_rev = repo.into_rev()?;
         assert!(current_rev.diff(&target_rev)?.is_clean());
 

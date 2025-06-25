@@ -1,10 +1,12 @@
 use serde::{Serialize, Deserialize};
 use std::{
-    path::Path,
+    path::{Path, PathBuf},
     fs,
 };
 use crate::prelude::*;
 use filetime::FileTime;
+
+pub type Index = PathBuf;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct File {

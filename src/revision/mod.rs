@@ -30,7 +30,7 @@ impl Revision {
             let new_base = base.join(entry.name());
 
             if entry.is_dir() {
-                let sub_tree = self.repo.db.retrieve(entry.oid())?;
+                let sub_tree = self.repo.db.retrieve(entry.oid()?)?;
                 self.list_entries(&new_base, &sub_tree, result)?;
             } else {
                 let _ = result.insert(new_base, Box::new(entry.clone()));

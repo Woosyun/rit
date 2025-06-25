@@ -107,3 +107,9 @@ impl IntoRev for Workspace {
         Ok(Rev::new(rev))
     }
 }
+
+/*
+impl HandleRevDiff for Workspace {
+    fn handle_rev_diff(&self, source: impl HandleRevDiff, rev_diff: RevDiff) -> Result<()>;
+}
+*/

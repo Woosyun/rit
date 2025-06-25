@@ -47,7 +47,7 @@ pub trait Worker: Driver {
     fn shuffle_files(&self) -> Result<Vec<PathBuf>> {
         let rev = self.workspace()?.into_rev()?;
         let mut rng = rand::rng();
-        let mut indices = rev.0.keys().cloned().collect::<Vec<_>>();
+        let mut indices = rev.keys().cloned().collect::<Vec<_>>();
         indices.shuffle(&mut rng);
         Ok(indices)
     }

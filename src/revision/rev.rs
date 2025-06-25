@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use std::{
     collections::HashMap,
-    path::{PathBuf, Path},
+    path::PathBuf,
 };
 //use serde::{Serialize, Deserialize};
 
@@ -9,17 +9,11 @@ pub trait IntoRev {
     fn into_rev(&self) -> Result<Rev>;
 }
 
-pub struct Rev(HashMap<PathBuf, Box<dyn Stat>>);
+type InnerRev = HashMap<PathBuf, Box<dyn Stat>>;
+pub struct Rev(InnerRev);
 impl Rev {
-    pub fn new(rev: HashMap<PathBuf, Box<dyn Stat>>) -> Self {
+    pub fn new(rev: InnerRev) -> Self {
         Self(rev)
-    }
-
-    pub fn get(&self, idx: &Path) -> Option<&Box<dyn Stat>> {
-        self.0.get(idx)
-    }
-    pub fn get_mut(&mut self, idx: &Path) -> Option<&mut Box<dyn Stat>> {
-        self.0.get_mut(idx)
     }
 
     pub fn diff(&self, to: &Rev) -> crate::Result<RevDiff> {
@@ -42,6 +36,24 @@ impl Rev {
         Ok(rev_diff)
     }
 }
-impl Iterator for Rev {
-    fn next(&mut self) ->  
+
+impl std::ops::Deref for Rev {
+    type Target = InnerRev;
+
+    fn deref(&self) -> &InnerRev {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for Rev {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+impl IntoIterator for Rev {
+    type Item = (PathBuf, Box<dyn Stat>);
+    type IntoIter = std::collections::hash_map::IntoIter<PathBuf, Box<dyn Stat>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
 }

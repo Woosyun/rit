@@ -18,42 +18,22 @@ impl Entry {
         let result = Self(stat.mode(), stat.mtime(), oid, name);
         Ok(result)
     }
-    pub fn mode(&self) -> Mode {
-        self.0
-    }
-    pub fn mtime(&self) -> Mtime {
-        self.1
-    }
-    pub fn oid(&self) -> &Oid {
-        &self.2
-    }
-    pub fn set_oid(&mut self, oid: Oid) {
-        self.2 = oid;
-    }
-    pub fn name(&self) -> &Name {
-        &self.3
-    }
 }
 
 impl Stat for Entry {
-    fn mtime(&self) -> Mtime {
-        self.mtime()
-    }
     fn mode(&self) -> Mode {
-        self.mode()
+        self.0
+    }
+    fn mtime(&self) -> Mtime {
+        self.1
     }
     fn oid(&self) -> crate::Result<&Oid> {
-        Ok(self.oid())
+        Ok(&self.2)
     }
-    fn set_oid(&mut self, _oid: Oid) {
+    fn set_oid(&mut self, _: Oid) {
         ()
     }
     fn name(&self) -> &Name {
-        self.name()
+        &self.3
     }
-    /*
-    fn clone_box(&self) -> Box<dyn Stat> {
-        Box::new(self.clone())
-    }
-    */
 }

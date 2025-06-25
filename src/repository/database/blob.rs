@@ -6,7 +6,16 @@ impl Blob {
     pub fn new(content: String) -> Self {
         Self (content)
     }
-    pub fn content(&self) -> &str {
+}
+
+impl std::ops::Deref for Blob {
+    type Target = String;
+    fn deref(&self) -> &String {
         &self.0
+    }
+}
+impl AsRef<[u8]> for Blob {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_bytes()
     }
 }

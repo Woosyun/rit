@@ -53,13 +53,13 @@ impl Commit {
         let blob = Blob::new(content);
         let oid = self.repo.db.store(&blob)?;
 
-        let file = curr_rev.0.get_mut(index).unwrap();
+        let file = curr_rev.get_mut(index).unwrap();
         file.set_oid(oid);
 
         // since oid of entry in curr_rev is None if its content was not changed,
         // prev_rev should be used here.
         let entry = repository::Entry::build(file.as_ref())?;
-        prev_rev.0.insert(index.to_path_buf(), Box::new(entry));
+        prev_rev.insert(index.to_path_buf(), Box::new(entry));
         Ok(())
     }
     fn store_tree_update_oid(&self, tree: &mut workspace::Tree) -> Result<()> {
@@ -72,7 +72,7 @@ impl Commit {
                     workspace::Entry::Entry(entry) => repository::Entry::build(entry.as_ref()),
                 }
             })
-            .collect::<crate::Result<Vec<_>>>()?;
+            .collect::<Result<Vec<_>>>()?;
         let oid = self.repo.db.store(&repo_tree)?;
         tree.set_oid(oid);
 
@@ -96,12 +96,12 @@ impl Commit {
             self.store_blob_upsert_entry(&mut prev_rev, &mut curr_rev, index)?;
         }
         for index in rev_diff.removed.iter() {
-            prev_rev.0.remove(index).unwrap();
+            prev_rev.remove(index).unwrap();
         }
 
         // 3. store tree and update oid for entry
         let mut ws_tree = workspace::Tree::new("".into());
-        for (index, entry) in prev_rev.0 {
+        for (index, entry) in prev_rev {
             let mut ancestors = self.ws.get_ancestors(&index)?;
             ws_tree.add_entry(&mut ancestors, entry);
         }
