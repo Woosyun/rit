@@ -9,8 +9,12 @@ use filetime::FileTime;
 
 pub trait Driver {
     fn workdir(&self) -> &Path;
-    fn workspace(&self) -> Result<Workspace>;
-    fn repository(&self) -> Result<Repository>;
+    fn workspace(&self) -> Result<Workspace> {
+        Workspace::build(self.workdir().to_path_buf())
+    }
+    fn repository(&self) -> Result<Repository> {
+        Repository::build(&self.workspace()?)
+    }
     //to make mtime differ
     fn sleep_1_sec(&self) {
         thread::sleep(Duration::from_secs(1));

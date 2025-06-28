@@ -4,8 +4,6 @@ pub use worker::*;
 pub mod driver;
 pub use driver::*;
 
-pub mod commander;
-pub use commander::*;
 
 use std::{
     path::{PathBuf, Path},
@@ -14,8 +12,8 @@ use std::{
     fmt::Write,
 };
 use rit::{
-    self,
     prelude::*,
+    commands::*,
 };
 use tempdir::TempDir;
 
@@ -65,7 +63,8 @@ impl Client {
     }
     pub fn try_init(&self) -> Result<()> {
         println!("try init");
-        self.init()?;
+        let cmd = init::Init::build(self.workdir().to_path_buf())?;
+        cmd.execute()?;
 
         let repo = self.workspace()?.workdir().join(Repository::name());
         assert!(repo.exists());
@@ -91,7 +90,9 @@ impl Client {
 
     pub fn try_commit(&mut self) -> rit::Result<()> {
         println!("try to commit");
-        self.commit()?;
+        let mut cmd = commit::Commit::build(self.workdir().to_path_buf())?;
+        cmd.set_message("commit message".to_string());
+        cmd.execute()?;
 
         //check deletion worked
         for index in self.removed.iter() {
@@ -158,7 +159,8 @@ impl Client {
         let target_rev = Revision::build(repo.clone(), &target_oid)?
             .into_rev()?;
 
-        self.checkout(branch)?;
+        let cmd = checkout::Checkout::build(self.workdir().to_path_buf())?;
+        cmd.execute(branch)?;
         assert_eq!(repo.local_head.get()?.branch()?, branch);
 
         //check whether checkout conducted
@@ -180,28 +182,23 @@ impl Client {
 
     pub fn try_branch_create(&self, new_branch: &str) -> Result<()> {
         println!("try to create branch '{}'", new_branch);
-        self.create_branch(new_branch)?;
+        let cmd = branch::Branch::build(self.workdir().to_path_buf())?;
+        cmd.create(new_branch)?;
 
         Ok(())
     }
 
     pub fn try_merge_branch(&self, to: &str) -> Result<()> {
         println!("try to merge branch '{}'", to);
-        self.merge(to)?;
-
-        Ok(())
+        let mut cmd = merge::Merge::build(self.workdir().to_path_buf())?;
+        cmd.set_target_branch(to.to_string());
+        cmd.execute()
     }
 }
 
 impl Driver for Client {
     fn workdir(&self) -> &Path {
         self.tempdir.path()
-    }
-    fn workspace(&self) -> Result<Workspace> {
-        Workspace::build(self.workdir().to_path_buf())
-    }
-    fn repository(&self) -> Result<Repository> {
-        Repository::build(&self.workspace()?)
     }
 }
 
@@ -216,5 +213,3 @@ impl Worker for Client {
         &mut self.removed
     }
 }
-
-impl Commander for Client {}

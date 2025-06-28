@@ -42,7 +42,7 @@ impl Workspace {
         &self.workdir
     }
 
-    pub fn get_ancestors(&self, index: &Path) -> crate::Result<Vec<String>> {
+    pub fn get_ancestors(&self, index: &Index) -> crate::Result<Vec<String>> {
         let mut ancestors = Vec::new();
         for p in index.ancestors() {
             if p.as_os_str().is_empty() {
@@ -64,7 +64,7 @@ impl Workspace {
         Ok(ancestors)
     }
 
-    pub fn get_relative_path(&self, path: &Path) -> crate::Result<PathBuf> {
+    pub fn get_relative_path(&self, path: &Path) -> crate::Result<Index> {
         path.strip_prefix(self.workdir())
             .map(|p| p.to_path_buf())
             .map_err(|e| {

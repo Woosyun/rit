@@ -35,7 +35,6 @@ impl Merge {
         self.target_branch = Ok(branch);
     }
 
-    //todo: fix "Cannot find base" error
     fn find_base(&self) -> Result<FindBase> {
         let from = self.repo.refs.get(self.repo.local_head.get()?.branch()?)?;
         //let to = self.repo.refs.get(self.target_branch.as_ref().map_err(|e| e.clone())?)?;
@@ -125,7 +124,7 @@ impl Merge {
         let path = self.ws.workdir().join(index);
         fs::write(&path, blob)
             .map_err(|e| Error::Commands(e.to_string()))?;
-        utils::set_file_mtime(&path, mtime)
+        set_file_mtime(&path, mtime)
             .map_err(|e| Error::Commands(e.to_string()))
     }
 
@@ -135,10 +134,10 @@ impl Merge {
 
         match self.find_base()? {
             FindBase::FastForward => {
-                commands::Checkout::build(self.ws.workdir().to_path_buf())?
+                super::checkout::Checkout::build(self.ws.workdir().to_path_buf())?
                     .execute(&self.target_branch.clone()?)?;
                 self.repo.refs.set(&original_branch, &target_oid)?;
-                commands::Checkout::build(self.ws.workdir().to_path_buf())?
+                super::checkout::Checkout::build(self.ws.workdir().to_path_buf())?
                     .execute(&original_branch)?;
             },
             FindBase::Base(oid) => {
@@ -162,7 +161,7 @@ impl Merge {
                         .map_err(|e| Error::Commands(e.to_string()))?;
                 }
 
-                let mut commit = commands::Commit::build(self.ws.workdir().to_path_buf())?;
+                let mut commit = super::commit::Commit::build(self.ws.workdir().to_path_buf())?;
                 commit.add_parent(target_oid);
                 commit.set_message(format!("{} merged {}", original_branch, self.target_branch.clone()?));
                 commit.execute()?;

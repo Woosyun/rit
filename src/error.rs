@@ -1,6 +1,8 @@
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
+use serde::{Serialize, Deserialize};
+// todo: implement serde
+// use thiserror?
+// https://jonaskruckenberg.github.io/tauri-docs-wip/development/inter-process-communication.html#error-handling
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Error {
     Workspace(String),
     Ignore(String),
@@ -23,5 +25,7 @@ impl std::fmt::Display for Error {
         }
     }
 }
+impl std::error::Error for Error {}
 
 pub type Result<T> = std::result::Result<T, Error>;
+

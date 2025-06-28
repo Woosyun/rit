@@ -3,7 +3,10 @@ use std::{
     path::PathBuf,
     collections::HashSet,
 };
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    error::*,
+};
 use serde::{Serialize, Deserialize};
 
 const REFS: &str = "refs";
@@ -92,7 +95,7 @@ impl Refs {
 
         let content = serde_json::to_string(oid)
             .map_err(|e| Error::Refs(e.to_string()))?;
-        utils::lock_write(&path, &content)
+        lock_write(&path, &content)
             .map_err(|e| Error::Refs(e.to_string()))?;
         Ok(())
     }

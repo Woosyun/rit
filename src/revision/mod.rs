@@ -25,7 +25,7 @@ impl Revision {
             commit,
         })
     }
-    fn list_entries(&self, base: &Path, tree: &repository::Tree, result: &mut HashMap<PathBuf, Box<dyn Stat>>) -> crate::Result<()> {
+    fn list_entries(&self, base: &Path, tree: &repository::tree::Tree, result: &mut HashMap<PathBuf, Box<dyn Stat>>) -> crate::Result<()> {
         for entry in tree.entries() {
             let new_base = base.join(entry.name());
 

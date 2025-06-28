@@ -1,5 +1,4 @@
 pub mod tree;
-pub use tree::*;
 
 pub mod blob;
 pub use blob::*;
@@ -70,7 +69,7 @@ impl Database {
             return Ok(oid);
         }
 
-        utils::lock_write(&path, &content)
+        lock_write(&path, &content)
             .map_err(|e| Error::Database(e.to_string()))?;
         Ok(oid)
     }

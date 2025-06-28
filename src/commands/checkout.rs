@@ -39,7 +39,7 @@ impl Checkout {
         let path = self.ws.workdir().join(index);
         fs::write(&path, blob)
             .map_err(|e| Error::Commands(e.to_string()))?;
-        utils::set_file_mtime(&path, mtime)
+        set_file_mtime(&path, mtime)
             .map_err(|e| Error::Commands(e.to_string()))
     }
     

@@ -14,13 +14,13 @@ use crate::prelude::*;
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Ignore{
     path: PathBuf,
-    names: HashSet<PathBuf>,
+    names: HashSet<Index>,
 }
 impl Ignore {
     pub fn name() -> &'static str {
         ".ritignore"
     }
-    pub fn new(path: PathBuf) -> Self {
+    fn new(path: PathBuf) -> Self {
         let rit = Repository::name();
         let rit = Path::new(rit).to_path_buf();
         Self {
@@ -47,10 +47,10 @@ impl Ignore {
         fs::write(&self.path, &rit_ignore)
             .map_err(|e| Error::Ignore(e.to_string()))
     }
-    pub fn add(&mut self, index: PathBuf) {
+    pub fn add(&mut self, index: Index) {
         self.names.insert(index);
     }
-    pub fn is_ignored(&self, index: &Path) -> bool {
+    pub fn is_ignored(&self, index: &Index) -> bool {
         self.names.contains(index)
     }
 }

@@ -73,7 +73,7 @@ impl LocalHead {
     fn set(&self, head: Head) -> crate::Result<()> {
         let content = serde_json::to_string(&head)
             .map_err(|e| Error::LocalHead(e.to_string()))?;
-        utils::lock_write(&self.path, &content)
+        lock_write(&self.path, &content)
             .map_err(|e| Error::LocalHead(e.to_string()))?;
         Ok(())
     }

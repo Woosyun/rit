@@ -1,15 +1,12 @@
 use crate::prelude::*;
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-};
+use std::collections::HashMap;
 //use serde::{Serialize, Deserialize};
 
 pub trait IntoRev {
     fn into_rev(&self) -> Result<Rev>;
 }
 
-type InnerRev = HashMap<PathBuf, Box<dyn Stat>>;
+type InnerRev = HashMap<Index, Box<dyn Stat>>;
 pub struct Rev(InnerRev);
 impl Rev {
     pub fn new(rev: InnerRev) -> Self {
@@ -50,8 +47,8 @@ impl std::ops::DerefMut for Rev {
     }
 }
 impl IntoIterator for Rev {
-    type Item = (PathBuf, Box<dyn Stat>);
-    type IntoIter = std::collections::hash_map::IntoIter<PathBuf, Box<dyn Stat>>;
+    type Item = (Index, Box<dyn Stat>);
+    type IntoIter = std::collections::hash_map::IntoIter<Index, Box<dyn Stat>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()

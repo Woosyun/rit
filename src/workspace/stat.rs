@@ -1,5 +1,7 @@
-use crate::repository::Oid;
-//use std::path::PathBuf;
+use crate::prelude::*;
+use std::path::PathBuf;
+
+pub type Index = PathBuf;
 
 pub type Mode = u32;
 pub type Mtime = i64;

@@ -1,18 +1,18 @@
 pub mod head;
-use head::*;
+pub use head::*;
 
 pub mod refs;
-use refs::*;
+pub use refs::*;
 
 pub mod database;
 pub use database::*;
 
-use crate::prelude::*;
 use serde::{Serialize, Deserialize};
 use std::{
     collections::HashMap,
     fs,
 };
+use crate::prelude::*;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Repository {
@@ -57,24 +57,34 @@ impl Repository {
 
         Ok(())
     }
+
+    //refs may not contains oid for target branch name.
+    pub fn read_head(&self) -> Result<Option<Oid>> {
+        let head = self.local_head.get()?;
+
+        let branch = if !head.is_branch() {
+            return Ok(Some(head.oid()?.clone()));
+        } else {
+            head.branch()?
+        };
+
+        let oid = match self.refs.contains(branch) {
+            true => Some(self.refs.get(branch)?),
+            false => None
+        };
+        Ok(oid)
+    }
 }
 
 impl IntoRev for Repository {
     fn into_rev(&self) -> Result<Rev> {
-        let head = self.local_head.get()?;
-        let branch = if !head.is_branch() {
-            return Err(Error::Repository("cannot get Rev from non-branch head".to_string()));
-        } else {
-            head.branch()?
+        let rev = match self.read_head()? {
+            Some(oid) => {
+                Revision::build(self.clone(), &oid)?
+                    .into_rev()?
+            },
+            None => Rev::new(HashMap::new())
         };
-        let rev = if self.refs.contains(branch) {
-            let parent = self.refs.get(branch)?;
-            Revision::build(self.clone(), &parent)?
-                .into_rev()?
-        } else {
-            Rev::new(HashMap::new())
-        };
-
         Ok(rev)
     }
 }
