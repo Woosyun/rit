@@ -37,10 +37,16 @@ impl History {
             return Ok(());
         }
 
-        let commit: repository::Commit = self.repo.db.retrieve(child)?;
-        for parent in commit.parents() {
-            hg.add_edge(parent.clone(), child.clone());
-            self.traverse(hg, parent, count-1)?;
+        let commit = self.repo.db
+            .retrieve::<repository::Commit>(child)?;
+        let parents = commit.parents();
+        if parents.len() == 0 {
+            hg.add_root(child.clone());
+        } else {
+            for parent in parents {
+                hg.add_edge(parent.clone(), child.clone());
+                self.traverse(hg, parent, count-1)?;
+            }
         }
         Ok(())
     }
@@ -50,6 +56,7 @@ impl History {
         for leaf in self.read_branches()? {
             self.traverse(&mut hg, &leaf, 1000)?;
         }
+        println!("full history graph: {:?}", &hg);
         Ok(hg)
     }
 }
