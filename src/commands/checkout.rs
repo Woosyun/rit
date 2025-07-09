@@ -8,6 +8,7 @@ pub struct Checkout {
     ws: Workspace,
     repo: Repository,
     curr_rev: Rev,
+    target: CheckoutTarget,
 }
 
 impl Checkout {
@@ -26,9 +27,23 @@ impl Checkout {
         let re = Self {
             ws,
             repo,
-            curr_rev
+            curr_rev,
+            target: CheckoutTarget::None,
         };
         Ok(re)
+    }
+    pub fn set_target_to_oid(&mut self, oid: Oid) {
+        self.target = CheckoutTarget::Oid(oid);
+    }
+    pub fn set_target_to_branch(&mut self, branch: String) {
+        self.target = CheckoutTarget::Branch(branch);
+    }
+    fn get_target_oid(&self) -> Result<Oid> {
+        match &self.target {
+            CheckoutTarget::None => Err(Error::Commands("target not found".to_string())),
+            CheckoutTarget::Oid(oid) => Ok(oid.clone()),
+            CheckoutTarget::Branch(branch) => self.repo.refs.get(branch),
+        }
     }
 
     fn upsert_entry(&self, target_rev: &Rev, index: &Path) -> Result<()> {
@@ -42,9 +57,16 @@ impl Checkout {
         set_file_mtime(&path, mtime)
             .map_err(|e| Error::Commands(e.to_string()))
     }
-    
-    pub fn execute(&self, branch: &str) -> crate::Result<()> {
-        let target_oid = self.repo.refs.get(branch)?;
+    fn update_head(&self) -> Result<()> {
+        match &self.target {
+            CheckoutTarget::Oid(oid) => self.repo.local_head.set_to_oid(oid),
+            CheckoutTarget::Branch(branch) => self.repo.local_head.set_to_branch(branch),
+            _ => panic!("cannot update head")
+        }
+    }
+
+    pub fn execute(&self) -> crate::Result<()> {
+        let target_oid = self.get_target_oid()?;
         let target_rev = Revision::build(self.repo.clone(), &target_oid)?
             .into_rev()?;
 
@@ -64,10 +86,15 @@ impl Checkout {
 
         //clear empty directories
 
-        //update head
-        //self.repo.local_head.set_to_oid(&target_oid)?;
-        self.repo.local_head.set_to_branch(branch)?;
+        self.update_head()?;
 
         Ok(())
     }
+}
+
+#[allow(dead_code)]
+enum CheckoutTarget {
+    None,
+    Oid(Oid),
+    Branch(String),
 }

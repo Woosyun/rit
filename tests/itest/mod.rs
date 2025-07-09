@@ -159,8 +159,9 @@ impl Client {
         let target_rev = Revision::build(repo.clone(), &target_oid)?
             .into_rev()?;
 
-        let cmd = checkout::Checkout::build(self.workdir().to_path_buf())?;
-        cmd.execute(branch)?;
+        let mut cmd = checkout::Checkout::build(self.workdir().to_path_buf())?;
+        cmd.set_target_to_branch(branch.to_string());
+        cmd.execute()?;
         assert_eq!(repo.local_head.get()?.branch()?, branch);
 
         //check whether checkout conducted

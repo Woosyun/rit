@@ -1,7 +1,4 @@
 use serde::{Serialize, Deserialize};
-// todo: implement serde
-// use thiserror?
-// https://jonaskruckenberg.github.io/tauri-docs-wip/development/inter-process-communication.html#error-handling
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Error {
     Workspace(String),

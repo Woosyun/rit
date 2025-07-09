@@ -17,77 +17,84 @@ impl History {
         })
     }
 
-    fn read_branches(&self) -> Result<Vec<Oid>> {
-        let mut leaves = Vec::new();
-
-        for branch in self.repo.refs.list_branches()? {
-            if self.repo.refs.contains(&branch) {
-                if let Ok(oid) = self.repo.refs.get(&branch) {
-                    leaves.push(oid);
-                }
-            }
-        }
-
-        Ok(leaves)
-    }
-
-    fn traverse(&self, hg: &mut HistoryGraph, child: &Oid, count: u32) -> Result<()> {
-        if count == 0 {
-            hg.add_root(child.clone());
+    fn rec_read(&self, hg: &mut HistoryGraph, oid: &Oid, count: usize) -> Result<()> {
+        if !hg.insert_node(oid.clone()) {
+            return Ok(());
+        } else if count == 0 {
             return Ok(());
         }
 
-        let commit = self.repo.db
-            .retrieve::<repository::Commit>(child)?;
-        let parents = commit.parents();
-        if parents.len() == 0 {
-            hg.add_root(child.clone());
-        } else {
-            for parent in parents {
-                hg.add_edge(parent.clone(), child.clone());
-                self.traverse(hg, parent, count-1)?;
-            }
+        let commit: repository::Commit = self.repo.db.retrieve(oid)?;
+        for parent in commit.parents() {
+            self.rec_read(hg, parent, count-1)?;
+            hg.insert_parent(oid.clone(), parent.clone());
         }
         Ok(())
     }
 
     pub fn read_full(&self) -> Result<HistoryGraph> {
         let mut hg = HistoryGraph::new();
-        for leaf in self.read_branches()? {
-            self.traverse(&mut hg, &leaf, 1000)?;
+
+        for branch in self.repo.refs.list_branches()? {
+            //set nodes
+            let leaf = self.repo.refs.get(&branch)?;
+            self.rec_read(&mut hg, &leaf, 100)?;
+            
+            //set branch->leaf node
+            hg.insert_branch(branch, leaf);
         }
-        println!("full history graph: {:?}", &hg);
+
         Ok(hg)
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HistoryGraph {
-    children: HashMap<Oid, HashSet<Oid>>,
-    roots: HashSet<Oid>,
+    //roots: HashSet<Oid>,
+
+    //known Oids pointing each revision
+    nodes: HashSet<Oid>,
+
+    //parent -> children
+    parents: HashMap<Oid, HashSet<Oid>>,
+
+    //each branch points to leaf revision,
+    //todo: branch should be consists of leaf(end) and root(start) oids
+    //maybe create graph first and pick one of the children's start branches
+    //and move upward one that has higher hierarchy.
+    branches: HashMap<String, Oid>,
 }
 impl HistoryGraph {
     pub fn new() -> Self {
         Self {
-            children: HashMap::new(),
-            roots: HashSet::new(),
+            //roots: HashSet::new(),
+            nodes: HashSet::new(),
+            parents: HashMap::new(),
+            branches: HashMap::new(),
         }
     }
     
-    fn add_edge(&mut self, from: Oid, to: Oid) {
-        self.children
-            .entry(from.clone())
-            .or_default()
-            .insert(to.clone());
+    fn insert_node(&mut self, node: Oid) -> bool {
+        self.nodes.insert(node)
     }
-    fn add_root(&mut self, root: Oid) {
-        self.roots.insert(root);
+    pub fn nodes(&self) -> &HashSet<Oid> {
+        &self.nodes
     }
 
-    pub fn children(&self) -> &HashMap<Oid, HashSet<Oid>> {
-        &self.children
+    fn insert_branch(&mut self, branch: String, oid: Oid) -> Option<Oid> {
+        self.branches.insert(branch, oid)
     }
-    pub fn roots(&self) -> &HashSet<Oid> {
-        &self.roots
+    pub fn branches(&mut self) -> &HashMap<String, Oid> {
+        &self.branches
+    }
+
+    fn insert_parent(&mut self, child: Oid, parent: Oid) {
+        self.parents
+            .entry(child)
+            .or_default()
+            .insert(parent);
+    }
+    pub fn parents(&mut self) -> &HashMap<Oid, HashSet<Oid>> {
+        &self.parents
     }
 }

@@ -58,7 +58,6 @@ impl Repository {
         Ok(())
     }
 
-    //refs may not contains oid for target branch name.
     pub fn read_head(&self) -> Result<Option<Oid>> {
         let head = self.local_head.get()?;
 

@@ -134,11 +134,15 @@ impl Merge {
 
         match self.find_base()? {
             FindBase::FastForward => {
-                super::checkout::Checkout::build(self.ws.workdir().to_path_buf())?
-                    .execute(&self.target_branch.clone()?)?;
+                let mut cmd = super::checkout::Checkout::build(self.ws.workdir().to_path_buf())?;
+                cmd.set_target_to_branch(self.target_branch.clone()?);
+                cmd.execute()?;
+
                 self.repo.refs.set(&original_branch, &target_oid)?;
-                super::checkout::Checkout::build(self.ws.workdir().to_path_buf())?
-                    .execute(&original_branch)?;
+
+                let mut cmd = super::checkout::Checkout::build(self.ws.workdir().to_path_buf())?;
+                cmd.set_target_to_branch(original_branch);
+                cmd.execute()?;
             },
             FindBase::Base(oid) => {
                 let from = self.repo.into_rev()?;
