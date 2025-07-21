@@ -29,7 +29,7 @@ impl Workspace {
         if !workdir.exists() {
             return Err(crate::Error::Workspace("NOT FOUND".into()));
         }
-        let ignore = Ignore::build(workdir.clone())?;
+        let ignore = Ignore::load(workdir.clone())?;
 
         let ws = Self {
             workdir,
@@ -42,6 +42,7 @@ impl Workspace {
         &self.workdir
     }
 
+    /*
     pub fn get_ancestors(&self, index: &Index) -> crate::Result<Vec<String>> {
         let mut ancestors = Vec::new();
         for p in index.ancestors() {
@@ -63,6 +64,7 @@ impl Workspace {
         }
         Ok(ancestors)
     }
+    */
 
     pub fn get_relative_path(&self, path: &Path) -> crate::Result<Index> {
         path.strip_prefix(self.workdir())
@@ -104,7 +106,7 @@ impl IntoRev for Workspace {
     fn into_rev(&self) -> crate::Result<Rev> {
         let mut rev = HashMap::new();
         self.list_files(self.workdir(), &mut rev)?;
-        Ok(Rev::new(rev))
+        Ok(Rev::from(rev))
     }
 }
 
@@ -113,3 +115,7 @@ impl HandleRevDiff for Workspace {
     fn handle_rev_diff(&self, source: impl HandleRevDiff, rev_diff: RevDiff) -> Result<()>;
 }
 */
+
+#[cfg(test)]
+#[path = "./workspace.test.rs"]
+mod test;

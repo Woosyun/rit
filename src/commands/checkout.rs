@@ -8,7 +8,12 @@ pub struct Checkout {
     ws: Workspace,
     repo: Repository,
     curr_rev: Rev,
-    target: CheckoutTarget,
+    target: Result<CheckoutTarget>,
+}
+
+enum CheckoutTarget {
+    Oid(Oid),
+    Branch(String),
 }
 
 impl Checkout {
@@ -28,22 +33,15 @@ impl Checkout {
             ws,
             repo,
             curr_rev,
-            target: CheckoutTarget::None,
+            target: Err(Error::Commands("checkout target is not set".into())),
         };
         Ok(re)
     }
     pub fn set_target_to_oid(&mut self, oid: Oid) {
-        self.target = CheckoutTarget::Oid(oid);
+        self.target = Ok(CheckoutTarget::Oid(oid));
     }
     pub fn set_target_to_branch(&mut self, branch: String) {
-        self.target = CheckoutTarget::Branch(branch);
-    }
-    fn get_target_oid(&self) -> Result<Oid> {
-        match &self.target {
-            CheckoutTarget::None => Err(Error::Commands("target not found".to_string())),
-            CheckoutTarget::Oid(oid) => Ok(oid.clone()),
-            CheckoutTarget::Branch(branch) => self.repo.refs.get(branch),
-        }
+        self.target = Ok(CheckoutTarget::Branch(branch));
     }
 
     fn upsert_entry(&self, target_rev: &Rev, index: &Path) -> Result<()> {
@@ -57,16 +55,14 @@ impl Checkout {
         set_file_mtime(&path, mtime)
             .map_err(|e| Error::Commands(e.to_string()))
     }
-    fn update_head(&self) -> Result<()> {
-        match &self.target {
-            CheckoutTarget::Oid(oid) => self.repo.local_head.set_to_oid(oid),
-            CheckoutTarget::Branch(branch) => self.repo.local_head.set_to_branch(branch),
-            _ => panic!("cannot update head")
-        }
-    }
 
     pub fn execute(&self) -> crate::Result<()> {
-        let target_oid = self.get_target_oid()?;
+        let target_oid = match self.target.as_ref().map_err(Clone::clone)? {
+            CheckoutTarget::Oid(oid) => oid.clone(),
+            CheckoutTarget::Branch(branch) => {
+                self.repo.refs.get(branch)?
+            }
+        };
         let target_rev = Revision::build(self.repo.clone(), &target_oid)?
             .into_rev()?;
 
@@ -86,15 +82,11 @@ impl Checkout {
 
         //clear empty directories
 
-        self.update_head()?;
+        match &self.target.as_ref().map_err(Clone::clone)? {
+            CheckoutTarget::Oid(oid) => self.repo.local_head.set_to_oid(oid),
+            CheckoutTarget::Branch(branch) => self.repo.local_head.set_to_branch(branch),
+        }?;
 
         Ok(())
     }
-}
-
-#[allow(dead_code)]
-enum CheckoutTarget {
-    None,
-    Oid(Oid),
-    Branch(String),
 }

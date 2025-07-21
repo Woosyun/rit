@@ -2,12 +2,13 @@ use crate::prelude::*;
 use std::{
     fs,
     path::{PathBuf, Path},
+    collections::VecDeque,
 };
 
 pub struct Commit {
     ws: Workspace,
     repo: Repository,
-    parent: Vec<Oid>,
+    parents: Vec<Oid>,
     branch: String,
     message: String,
 }
@@ -16,38 +17,43 @@ impl Commit {
         let ws = Workspace::build(workdir)?;
         let repo = Repository::build(&ws)?;
 
-        // get current branch name
-        let head = repo.local_head.get()?;
-        let branch = if head.is_branch() {
-            head.branch()?.to_string()
+        //find oid of head and branch
+        let (branch, parents) = if let Some(branch) = Self::read_head(&repo)? {
+            let oid = repo.refs.get(&branch)?;
+            (branch, Vec::from([oid]))
         } else {
-            return Err(Error::Repository("cannot run commit on non-branch head".into()));
+            ("main".into(), Vec::new())
         };
-        let mut parent = Vec::new();
-        if repo.refs.contains(&branch) {
-            parent.push(repo.refs.get(&branch)?);
-        }
 
         let cmd = Self {
             ws,
             repo,
-            parent,
+            parents,
             branch,
             message: "".to_string(),
         };
 
         Ok(cmd)
     }
-    pub fn add_parent(&mut self, parent: Oid) {
-        self.parent.push(parent);
-    }
 
+    /// - read local head and get branch.
+    /// - if head is Oid, return error
+    fn read_head(repo: &Repository) -> Result<Option<String>> {
+        match repo.local_head.get()? {
+            Head::None => Ok(None),
+            Head::Branch(branch) => Ok(Some(branch)),
+            _ => Err(Error::Commands("Cannot commit on non-branch revision".into())),
+        }
+    }
+    pub fn add_parent(&mut self, parent: Oid) {
+        self.parents.push(parent);
+    }
     pub fn set_message(&mut self, message: String) {
         self.message = message;
     }
     
-    fn store_blob_upsert_entry(&self, prev_rev: &mut Rev, curr_rev: &mut Rev, index: &Path) -> Result<()> {
-        let path = self.ws.workdir().join(&index);
+    fn store_blob_and_upsert_entry(&self, prev_rev: &mut Rev, curr_rev: &mut Rev, index: &Path) -> Result<()> {
+        let path = self.ws.workdir().join(index);
         let content = fs::read_to_string(&path)
             .map_err(|e| Error::Workspace(e.to_string()))?;
         let blob = Blob::new(content);
@@ -56,20 +62,20 @@ impl Commit {
         let file = curr_rev.get_mut(index).unwrap();
         file.set_oid(oid);
 
-        // since oid of entry in curr_rev is None if its content was not changed,
-        // prev_rev should be used here.
-        let entry = repository::Entry::build(file.as_ref())?;
+        // Since oid of entries in curr_rev are None,
+        // prev_rev should be used and updated
+        let entry = repository::Entry::build(&**file)?;
         prev_rev.insert(index.to_path_buf(), Box::new(entry));
         Ok(())
     }
-    fn store_tree_update_oid(&self, tree: &mut workspace::Tree) -> Result<()> {
+    fn store_tree_and_update_oid(&self, tree: &mut workspace::Tree) -> Result<()> {
         let repo_tree = tree
-            .entries
+            .entries()
             .iter()
             .map(|(_, tree_entry)| {
                 match tree_entry {
                     workspace::Entry::Tree(tree) => repository::Entry::build(tree),
-                    workspace::Entry::Entry(entry) => repository::Entry::build(entry.as_ref()),
+                    workspace::Entry::Entry(entry) => repository::Entry::build(&**entry),
                 }
             })
             .collect::<Result<Vec<_>>>()?;
@@ -90,27 +96,37 @@ impl Commit {
 
         // 2. store Blobs and update oid for entry
         for index in rev_diff.added.iter() {
-            self.store_blob_upsert_entry(&mut prev_rev, &mut curr_rev, index)?;
+            self.store_blob_and_upsert_entry(&mut prev_rev, &mut curr_rev, index)?;
         }
         for index in rev_diff.modified.iter() {
-            self.store_blob_upsert_entry(&mut prev_rev, &mut curr_rev, index)?;
+            self.store_blob_and_upsert_entry(&mut prev_rev, &mut curr_rev, index)?;
         }
         for index in rev_diff.removed.iter() {
             prev_rev.remove(index).unwrap();
         }
 
         // 3. store tree and update oid for entry
-        let mut ws_tree = workspace::Tree::new("".into());
+        let mut ws_tree = workspace::Tree::new(".".into());
         for (index, entry) in prev_rev {
-            let mut ancestors = self.ws.get_ancestors(&index)?;
-            ws_tree.add_entry(&mut ancestors, entry);
+            //let mut ancestors = self.ws.get_ancestors(&index)?;
+            let mut components = index
+                .components()
+                .filter_map(|c| {
+                    match c {
+                        std::path::Component::Normal(name) => Some(name),
+                        _ => None,
+                    }
+                })
+                .map(|oss| oss.to_str().unwrap().to_string())
+                .collect::<VecDeque<String>>();
+            ws_tree.add_entry(&mut components, entry);
         }
         
-        ws_tree.traverse_mut(|tree: &mut workspace::Tree| self.store_tree_update_oid(tree))?;
+        ws_tree.traverse_mut(|tree| self.store_tree_and_update_oid(tree))?;
 
         // 4. store commit and update head
         let root = ws_tree.oid()?.clone();
-        let commit = repository::Commit::new(self.parent.clone(), root, self.message.clone());
+        let commit = repository::Commit::new(self.parents.clone(), root, self.message.clone());
         let new_head = self.repo.db.store(&commit)?;
 
         self.repo.refs.set(&self.branch, &new_head)?;

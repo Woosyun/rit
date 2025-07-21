@@ -49,7 +49,7 @@ impl IntoRev for Revision {
         let root_tree = self.repo.db.retrieve(root)?;
         self.list_entries(Path::new(""), &root_tree, &mut rev)?;
 
-        let rev = Rev::new(rev);
+        let rev = Rev::from(rev);
         Ok(rev)
     }
 }

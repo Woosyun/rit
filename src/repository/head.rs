@@ -7,9 +7,11 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Head {
-    Oid(Oid),
+    None,
     Branch(String),
+    Oid(Oid),
 }
+/*
 impl Head {
     pub fn is_branch(&self) -> bool {
         match self {
@@ -30,6 +32,7 @@ impl Head {
         }
     }
 }
+*/
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct LocalHead {
@@ -58,7 +61,7 @@ impl LocalHead {
             let lh = Self {
                 path
             };
-            lh.set_to_branch("main")?;
+            lh.set(Head::None)?;
         }
 
         Ok(())

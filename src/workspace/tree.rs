@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
 };
 use crate::{
     repository,
@@ -12,9 +12,9 @@ pub enum Entry {
 }
 
 pub struct Tree{
-    name: Name,
+    name: Name, 
     oid: Option<repository::Oid>,
-    pub entries: HashMap<Name, Entry>,
+    entries: HashMap<Name, Entry>,
 }
 impl Tree {
     pub fn new(name: String) -> Self {
@@ -24,23 +24,21 @@ impl Tree {
             entries: HashMap::new(),
         }
     }
+    pub fn entries(&self) -> &HashMap<Name, Entry> {
+        &self.entries
+    }
 
-    pub fn add_entry(&mut self, ancestors: &mut Vec<String>, entry: Box<dyn Stat>) {
-        let entry_name = ancestors.pop().unwrap();
+    pub fn add_entry(&mut self, components: &mut VecDeque<String>, new_entry: Box<dyn Stat>) {
+        let Some(entry_name) = components.pop_front() else { return; };
 
-        if ancestors.is_empty() {
-            let _ = self.entries.insert(entry_name, Entry::Entry(entry));
-            return;
-        }
-
-        if let Some(tree) = self.entries.get_mut(&entry_name) {
-            if let Entry::Tree(tree) = tree {
-                tree.add_entry(ancestors, entry);
-            }
+        if components.is_empty() {
+            self.entries.insert(entry_name, Entry::Entry(new_entry));
         } else {
-            let mut tree = Tree::new(entry_name.clone());
-            tree.add_entry(ancestors, entry);
-            self.entries.insert(entry_name, Entry::Tree(tree));
+            let Entry::Tree(tree) = self.entries.entry(entry_name.clone())
+                .or_insert_with(|| Entry::Tree(Tree::new(entry_name)))
+                else { return; };
+
+            tree.add_entry(components, new_entry);
         }
     }
 

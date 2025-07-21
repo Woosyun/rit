@@ -9,6 +9,7 @@ pub struct Merge {
     ws: Workspace,
     repo: Repository,
     target_branch: Result<String>,
+    current_branch: String,
 }
 impl Merge {
     pub fn build(workdir: PathBuf) -> Result<Self> {
@@ -23,10 +24,16 @@ impl Merge {
             return Err(Error::Workspace("workspace is not clean".to_string()));
         }
 
+        let current_branch = match repo.local_head.get()? {
+            Head::Branch(branch) => Ok(branch),
+            _ => Err(Error::Commands("Cannot run merge on non-branch".into())),
+        }?;
+
         let merge = Self {
             ws,
             repo,
             target_branch,
+            current_branch,
         };
         Ok(merge)
     }
@@ -36,16 +43,16 @@ impl Merge {
     }
 
     fn find_base(&self) -> Result<FindBase> {
-        let from = self.repo.refs.get(self.repo.local_head.get()?.branch()?)?;
+        let from = self.repo.refs.get(&self.current_branch)?;
         //let to = self.repo.refs.get(self.target_branch.as_ref().map_err(|e| e.clone())?)?;
         let to = self.target_branch.as_ref()
             .map_err(|e| e.clone())
             .map(|branch| self.repo.refs.get(branch))??;
 
-        let mut from_seen = HashSet::new();
-        let mut from_que = VecDeque::from([from.clone()]);
-        let mut to_seen = HashSet::new();
-        let mut to_que = VecDeque::from([to.clone()]);
+        let mut from_seen = HashSet::<Oid>::new();
+        let mut from_que = VecDeque::<Oid>::from([from.clone()]);
+        let mut to_seen = HashSet::<Oid>::new();
+        let mut to_que = VecDeque::<Oid>::from([to.clone()]);
 
         while !from_que.is_empty() || !to_que.is_empty() {
             if let Some(oid) = from_que.pop_front() {
@@ -130,7 +137,6 @@ impl Merge {
 
     pub fn execute(&self) -> Result<()> {
         let target_oid = self.repo.refs.get(&self.target_branch.clone()?)?;
-        let original_branch = self.repo.local_head.get()?.branch()?.to_string();
 
         match self.find_base()? {
             FindBase::FastForward => {
@@ -138,10 +144,10 @@ impl Merge {
                 cmd.set_target_to_branch(self.target_branch.clone()?);
                 cmd.execute()?;
 
-                self.repo.refs.set(&original_branch, &target_oid)?;
+                self.repo.refs.set(&self.current_branch, &target_oid)?;
 
                 let mut cmd = super::checkout::Checkout::build(self.ws.workdir().to_path_buf())?;
-                cmd.set_target_to_branch(original_branch);
+                cmd.set_target_to_branch(self.current_branch.clone());
                 cmd.execute()?;
             },
             FindBase::Base(oid) => {
@@ -167,7 +173,7 @@ impl Merge {
 
                 let mut commit = super::commit::Commit::build(self.ws.workdir().to_path_buf())?;
                 commit.add_parent(target_oid);
-                commit.set_message(format!("{} merged {}", original_branch, self.target_branch.clone()?));
+                commit.set_message(format!("{} merged {}", self.current_branch, self.target_branch.clone()?));
                 commit.execute()?;
             },
             _ => ()

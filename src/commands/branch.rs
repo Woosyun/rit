@@ -16,19 +16,24 @@ impl Branch {
         })
     }
 
+    fn read_head(&self) -> Result<Oid> {
+        match self.repo.local_head.get()? {
+            Head::None => Err(Error::Commands("Cannot read head on non-branch".into())),
+            Head::Oid(oid) => Ok(oid),
+            Head::Branch(branch) => {
+                self.repo.refs.get(&branch)
+            }
+        }
+    }
+
     // create new branch and copy-paste head
     pub fn create(&self, new_branch: &str) -> Result<()> {
         if self.repo.refs.contains(new_branch) {
             return Err(Error::Repository("branch is already exists.".into()));
         }
 
-        let head = self.repo.local_head.get()?;
-        let oid = if head.is_branch() {
-            &self.repo.refs.get(head.branch()?)?
-        } else {
-            head.oid()?
-        };
-        self.repo.refs.set(new_branch, oid)?;
+        let oid = self.read_head()?;
+        self.repo.refs.set(new_branch, &oid)?;
 
         Ok(())
     }

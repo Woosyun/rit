@@ -151,8 +151,11 @@ impl Client {
     pub fn try_checkout(&self, branch: &str) -> Result<()> {
         println!("try to checkout to '{}'", branch);
         let repo = self.repository()?;
-        let original_branch = repo.local_head.get()?
-            .branch()?.to_string();
+        let get_current_branch = || if let Head::Branch(branch) = repo.local_head.get()? {
+            Ok(branch)
+        } else {
+            return Err(Error::Commands("tried to get branch on non-branch in try_checkout".into()));
+        };
         let original_rev = repo.into_rev()?;
 
         let target_oid = repo.refs.get(branch)?;
@@ -162,7 +165,7 @@ impl Client {
         let mut cmd = checkout::Checkout::build(self.workdir().to_path_buf())?;
         cmd.set_target_to_branch(branch.to_string());
         cmd.execute()?;
-        assert_eq!(repo.local_head.get()?.branch()?, branch);
+        assert_eq!(get_current_branch()?, branch);
 
         //check whether checkout conducted
         // but if original branch and target branch are same,
@@ -172,7 +175,7 @@ impl Client {
         let current_rev = repo.into_rev()?;
         assert!(current_rev.diff(&target_rev)?.is_clean());
 
-        let original_oid = repo.refs.get(&original_branch)?;
+        let original_oid = repo.refs.get(&get_current_branch()?)?;
         let expected_original_rev = Revision::build(repo.clone(), &original_oid)?
             .into_rev()?;
         assert!(original_rev.diff(&expected_original_rev)?.is_clean());

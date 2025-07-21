@@ -23,6 +23,9 @@ impl Status {
         Ok(rev_diff)
     }
     */
+    fn read_head(&self) -> Result<Oid> {
+        match self.
+    }
 
     pub fn repository_status(&self) -> RepositoryStatus {
         let repo = self.ws.workdir().join(Repository::name());

@@ -8,10 +8,7 @@ pub mod database;
 pub use database::*;
 
 use serde::{Serialize, Deserialize};
-use std::{
-    collections::HashMap,
-    fs,
-};
+use std::fs;
 use crate::prelude::*;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -58,6 +55,7 @@ impl Repository {
         Ok(())
     }
 
+    /*
     pub fn read_head(&self) -> Result<Option<Oid>> {
         let head = self.local_head.get()?;
 
@@ -73,17 +71,24 @@ impl Repository {
         };
         Ok(oid)
     }
+    */
 }
 
 impl IntoRev for Repository {
     fn into_rev(&self) -> Result<Rev> {
-        let rev = match self.read_head()? {
-            Some(oid) => {
+        let rev = match self.local_head.get()? {
+            Head::None => Rev::new(),
+            Head::Branch(branch) => {
+                let oid = self.refs.get(&branch)?;
                 Revision::build(self.clone(), &oid)?
                     .into_rev()?
             },
-            None => Rev::new(HashMap::new())
+            Head::Oid(oid) => {
+                Revision::build(self.clone(), &oid)?
+                    .into_rev()?
+            },
         };
+
         Ok(rev)
     }
 }

@@ -9,7 +9,10 @@ pub trait IntoRev {
 type InnerRev = HashMap<Index, Box<dyn Stat>>;
 pub struct Rev(InnerRev);
 impl Rev {
-    pub fn new(rev: InnerRev) -> Self {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+    pub fn from(rev: InnerRev) -> Self {
         Self(rev)
     }
 
