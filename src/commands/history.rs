@@ -35,13 +35,14 @@ impl History {
     pub fn read_full(&self) -> Result<HistoryGraph> {
         let mut hg = HistoryGraph::new();
 
-        for branch in self.repo.refs.list_branches()? {
+        for branch_name in self.repo.refs.list_branches()? {
             //set nodes
-            let leaf = self.repo.refs.get(&branch)?;
+            let branch = self.repo.refs.get(&branch_name)?;
+            let leaf = branch.leaf();
             self.rec_read(&mut hg, &leaf, 100)?;
             
             //set branch->leaf node
-            hg.insert_branch(branch, leaf);
+            hg.insert_branch(branch_name, leaf.clone());
         }
 
         Ok(hg)

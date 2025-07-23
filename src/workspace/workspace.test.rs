@@ -1,6 +1,11 @@
+#![allow(unused)]
+
 use crate::prelude::*;
 use tempdir::TempDir;
-use std::fs;
+use std::{
+    fs,
+    collections::HashMap,
+};
 
 #[test]
 fn get_ancestors() -> Result<()> {
@@ -37,12 +42,5 @@ fn get_ancestors() -> Result<()> {
 
 #[test]
 fn list_files() -> Result<()> {
-    let tempdir = TempDir::new("read-workspace-and-list-files")
-        .map_err(|e| Error::Workspace(e.to_string()))?;
-    
-    let create_file = || {
-
-    };
-
-    Ok(())
+    todo!("check ability to read files in workspace");
 }

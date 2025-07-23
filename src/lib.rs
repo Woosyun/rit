@@ -7,9 +7,6 @@ pub mod commands;
 pub mod error;
 pub use error::*;
 
-#[cfg(test)]
-pub mod test_utils;
-
 
 pub mod prelude {
     pub use super::workspace::{

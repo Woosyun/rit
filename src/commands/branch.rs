@@ -21,7 +21,8 @@ impl Branch {
             Head::None => Err(Error::Commands("Cannot read head on non-branch".into())),
             Head::Oid(oid) => Ok(oid),
             Head::Branch(branch) => {
-                self.repo.refs.get(&branch)
+                Ok(self.repo.refs.get(&branch)?
+                    .leaf().clone())
             }
         }
     }

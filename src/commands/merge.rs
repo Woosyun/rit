@@ -43,11 +43,13 @@ impl Merge {
     }
 
     fn find_base(&self) -> Result<FindBase> {
-        let from = self.repo.refs.get(&self.current_branch)?;
+        let from_branch = self.repo.refs.get(&self.current_branch)?;
+        let from = from_branch.leaf();
         //let to = self.repo.refs.get(self.target_branch.as_ref().map_err(|e| e.clone())?)?;
-        let to = self.target_branch.as_ref()
+        let to_branch = self.target_branch.as_ref()
             .map_err(|e| e.clone())
             .map(|branch| self.repo.refs.get(branch))??;
+        let to = to_branch.leaf();
 
         let mut from_seen = HashSet::<Oid>::new();
         let mut from_que = VecDeque::<Oid>::from([from.clone()]);
@@ -58,7 +60,7 @@ impl Merge {
             if let Some(oid) = from_que.pop_front() {
                 if !from_seen.insert(oid.clone()) {
                     continue;
-                } else if from_seen.contains(&to) {
+                } else if from_seen.contains(to) {
                     return Ok(FindBase::AlreadyUpToDate);
                 } else if to_seen.contains(&oid) {
                     return Ok(FindBase::Base(oid.clone()));
@@ -73,7 +75,7 @@ impl Merge {
                 if !to_seen.insert(oid.clone()) {
                     continue;
                 }
-                if to_seen.contains(&from) {
+                if to_seen.contains(from) {
                     return Ok(FindBase::FastForward);
                 }
 
@@ -136,7 +138,8 @@ impl Merge {
     }
 
     pub fn execute(&self) -> Result<()> {
-        let target_oid = self.repo.refs.get(&self.target_branch.clone()?)?;
+        let target_branch = self.repo.refs.get(&self.target_branch.clone()?)?;
+        let target_oid = target_branch.leaf();
 
         match self.find_base()? {
             FindBase::FastForward => {
@@ -172,7 +175,7 @@ impl Merge {
                 }
 
                 let mut commit = super::commit::Commit::build(self.ws.workdir().to_path_buf())?;
-                commit.add_parent(target_oid);
+                commit.add_parent(target_oid.clone());
                 commit.set_message(format!("{} merged {}", self.current_branch, self.target_branch.clone()?));
                 commit.execute()?;
             },

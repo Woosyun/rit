@@ -9,6 +9,24 @@ use crate::{
 };
 use serde::{Serialize, Deserialize};
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Branch(Oid, Oid);
+impl Branch {
+    pub fn new(oid: &Oid) -> Self {
+        Self(oid.clone(), oid.clone())
+    }
+
+    pub fn root(&self) -> &Oid {
+        &self.0
+    }
+    pub fn leaf(&self) -> &Oid {
+        &self.1
+    }
+    pub fn update(&mut self, oid: &Oid) {
+        self.1 = oid.clone();
+    }
+}
+
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Refs {
     path: PathBuf,
@@ -73,7 +91,7 @@ impl Refs {
         Ok(result)
     }
 
-    pub fn get(&self, branch: &str) -> crate::Result<Oid> {
+    pub fn get(&self, branch: &str) -> crate::Result<Branch> {
         let mut path = self.path.clone();
         path.push(Refs::local());
         path.push(branch);
@@ -90,7 +108,20 @@ impl Refs {
         path.push(Refs::local());
         path.push(branch);
 
-        let content = serde_json::to_string(oid)
+        let branch = if path.exists() {
+            let content = fs::read_to_string(&path)
+                .map_err(|e| Error::Refs(e.to_string()))?;
+            let mut branch: Branch = serde_json::from_str(&content)
+                .map_err(|e| Error::Refs(e.to_string()))?;
+            branch.update(oid);
+
+            branch
+        } else {
+            let new_branch = Branch::new(oid);
+            new_branch
+        };
+
+        let content = serde_json::to_string(&branch)
             .map_err(|e| Error::Refs(e.to_string()))?;
         lock_write(&path, &content)
             .map_err(|e| Error::Refs(e.to_string()))?;

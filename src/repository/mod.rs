@@ -79,8 +79,9 @@ impl IntoRev for Repository {
         let rev = match self.local_head.get()? {
             Head::None => Rev::new(),
             Head::Branch(branch) => {
-                let oid = self.refs.get(&branch)?;
-                Revision::build(self.clone(), &oid)?
+                let branch = self.refs.get(&branch)?;
+                let oid = branch.leaf();
+                Revision::build(self.clone(), oid)?
                     .into_rev()?
             },
             Head::Oid(oid) => {

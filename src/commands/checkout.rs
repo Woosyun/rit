@@ -61,6 +61,7 @@ impl Checkout {
             CheckoutTarget::Oid(oid) => oid.clone(),
             CheckoutTarget::Branch(branch) => {
                 self.repo.refs.get(branch)?
+                    .leaf().clone()
             }
         };
         let target_rev = Revision::build(self.repo.clone(), &target_oid)?

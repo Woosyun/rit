@@ -10,7 +10,7 @@ pub struct Commit {
     repo: Repository,
     parents: Vec<Oid>,
     branch: String,
-    message: String,
+    message: Result<String>,
 }
 impl Commit {
     pub fn build(workdir: PathBuf) -> crate::Result<Self> {
@@ -18,11 +18,14 @@ impl Commit {
         let repo = Repository::build(&ws)?;
 
         //find oid of head and branch
-        let (branch, parents) = if let Some(branch) = Self::read_head(&repo)? {
-            let oid = repo.refs.get(&branch)?;
-            (branch, Vec::from([oid]))
+        let (branch, parents) = if let Some(branch_name) = Self::read_head(&repo)? {
+            let oid = repo.refs.get(&branch_name)?
+                .leaf()
+                .clone();
+
+            (branch_name, Vec::from([oid]))
         } else {
-            ("main".into(), Vec::new())
+            ("main".to_string(), Vec::new())
         };
 
         let cmd = Self {
@@ -30,7 +33,7 @@ impl Commit {
             repo,
             parents,
             branch,
-            message: "".to_string(),
+            message: Err(Error::Commands("Commit not set".into())),
         };
 
         Ok(cmd)
@@ -49,7 +52,7 @@ impl Commit {
         self.parents.push(parent);
     }
     pub fn set_message(&mut self, message: String) {
-        self.message = message;
+        self.message = Ok(message);
     }
     
     fn store_blob_and_upsert_entry(&self, prev_rev: &mut Rev, curr_rev: &mut Rev, index: &Path) -> Result<()> {
@@ -126,7 +129,7 @@ impl Commit {
 
         // 4. store commit and update head
         let root = ws_tree.oid()?.clone();
-        let commit = repository::Commit::new(self.parents.clone(), root, self.message.clone());
+        let commit = repository::Commit::new(self.parents.clone(), root, self.message.clone()?);
         let new_head = self.repo.db.store(&commit)?;
 
         self.repo.refs.set(&self.branch, &new_head)?;
