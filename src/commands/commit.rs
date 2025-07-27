@@ -129,7 +129,7 @@ impl Commit {
 
         // 4. store commit and update head
         let root = ws_tree.oid()?.clone();
-        let commit = repository::Commit::new(self.parents.clone(), root, self.message.clone()?);
+        let commit = repository::Commit::new(self.parents.clone(), root, self.message.clone()?, current_time());
         let new_head = self.repo.db.store(&commit)?;
 
         self.repo.refs.set(&self.branch, &new_head)?;

@@ -9,14 +9,16 @@ pub struct Commit {
     root: Oid,
     message: String,
     //commiter: String,
+    ctime: u64,
 }
 
 impl Commit {
-    pub fn new(parents: Vec<Oid>, root: Oid, message: String) -> Self {
+    pub fn new(parents: Vec<Oid>, root: Oid, message: String, ctime: u64) -> Self {
         Self {
             parents,
             root,
             message,
+            ctime,
         }
     }
     pub fn root(&self) -> &Oid {
@@ -30,5 +32,9 @@ impl Commit {
     }
     pub fn is_merged(&self) -> bool {
         self.parents.len() == 2
+    }
+
+    pub fn ctime(&self) -> u64 {
+        self.ctime
     }
 }

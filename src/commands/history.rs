@@ -18,13 +18,12 @@ impl History {
     }
 
     fn rec_read(&self, hg: &mut HistoryGraph, oid: &Oid, count: usize) -> Result<()> {
-        if !hg.insert_node(oid.clone()) {
+        if !hg.commits().get(oid).is_some() || count == 0 {
             return Ok(());
-        } else if count == 0 {
-            return Ok(());
-        }
+        } 
 
         let commit: repository::Commit = self.repo.db.retrieve(oid)?;
+        hg.insert_commit(oid.clone(), commit.clone());
         for parent in commit.parents() {
             self.rec_read(hg, parent, count-1)?;
             hg.insert_parent(oid.clone(), parent.clone());
@@ -38,11 +37,10 @@ impl History {
         for branch_name in self.repo.refs.list_branches()? {
             //set nodes
             let branch = self.repo.refs.get(&branch_name)?;
-            let leaf = branch.leaf();
-            self.rec_read(&mut hg, &leaf, 100)?;
+            self.rec_read(&mut hg, &branch.leaf(), 100)?;
             
             //set branch->leaf node
-            hg.insert_branch(branch_name, leaf.clone());
+            hg.insert_branch(branch_name, branch);
         }
 
         Ok(hg)
@@ -51,10 +49,7 @@ impl History {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HistoryGraph {
-    //roots: HashSet<Oid>,
-
-    //known Oids pointing each revision
-    nodes: HashSet<Oid>,
+    commits: HashMap<Oid, repository::Commit>,
 
     //parent -> children
     parents: HashMap<Oid, HashSet<Oid>>,
@@ -63,29 +58,28 @@ pub struct HistoryGraph {
     //todo: branch should be consists of leaf(end) and root(start) oids
     //maybe create graph first and pick one of the children's start branches
     //and move upward one that has higher hierarchy.
-    branches: HashMap<String, Oid>,
+    branches: HashMap<String, Branch>,
 }
 impl HistoryGraph {
     pub fn new() -> Self {
         Self {
-            //roots: HashSet::new(),
-            nodes: HashSet::new(),
+            commits: HashMap::new(),
             parents: HashMap::new(),
             branches: HashMap::new(),
         }
     }
     
-    fn insert_node(&mut self, node: Oid) -> bool {
-        self.nodes.insert(node)
+    fn insert_commit(&mut self, oid: Oid, commit: repository::Commit) -> Option<repository::Commit> {
+        self.commits.insert(oid, commit)
     }
-    pub fn nodes(&self) -> &HashSet<Oid> {
-        &self.nodes
+    pub fn commits(&self) -> &HashMap<Oid, repository::Commit> {
+        &self.commits
     }
 
-    fn insert_branch(&mut self, branch: String, oid: Oid) -> Option<Oid> {
-        self.branches.insert(branch, oid)
+    fn insert_branch(&mut self, name: String, branch: Branch) -> Option<Branch> {
+        self.branches.insert(name, branch)
     }
-    pub fn branches(&mut self) -> &HashMap<String, Oid> {
+    pub fn branches(&self) -> &HashMap<String, Branch> {
         &self.branches
     }
 

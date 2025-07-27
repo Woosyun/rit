@@ -2,6 +2,7 @@ use std::{
     fs,
     io,
     path::Path,
+    time::SystemTime,
 };
 use filetime::FileTime;
 
@@ -35,4 +36,11 @@ pub fn lock_write(file: &Path, content: &str) -> io::Result<()> {
 pub fn set_file_mtime(path: &Path, mtime: i64) -> io::Result<()> {
     let file_time = FileTime::from_unix_time(mtime, 0);
     filetime::set_file_mtime(path, file_time)
+}
+
+pub fn current_time() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("cannot get time")
+        .as_secs()
 }
