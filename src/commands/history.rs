@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     path::PathBuf,
 };
 use serde::{Serialize, Deserialize};
@@ -26,10 +26,11 @@ impl History {
         hg.insert_commit(oid.clone(), commit.clone());
         for parent in commit.parents() {
             self.rec_read(hg, parent, count-1)?;
-            hg.insert_parent(oid.clone(), parent.clone());
         }
         Ok(())
     }
+
+    //todo: make generalized read method
 
     pub fn read_full(&self) -> Result<HistoryGraph> {
         let mut hg = HistoryGraph::new();
@@ -37,7 +38,7 @@ impl History {
         for branch_name in self.repo.refs.list_branches()? {
             //set nodes
             let branch = self.repo.refs.get(&branch_name)?;
-            self.rec_read(&mut hg, &branch.leaf(), 100)?;
+            self.rec_read(&mut hg, &branch.leaf(), 10)?;
             
             //set branch->leaf node
             hg.insert_branch(branch_name, branch);
@@ -51,20 +52,13 @@ impl History {
 pub struct HistoryGraph {
     commits: HashMap<Oid, repository::Commit>,
 
-    //parent -> children
-    parents: HashMap<Oid, HashSet<Oid>>,
-
-    //each branch points to leaf revision,
-    //todo: branch should be consists of leaf(end) and root(start) oids
-    //maybe create graph first and pick one of the children's start branches
-    //and move upward one that has higher hierarchy.
+    //each branch points to root, leaf revision,
     branches: HashMap<String, Branch>,
 }
 impl HistoryGraph {
     pub fn new() -> Self {
         Self {
             commits: HashMap::new(),
-            parents: HashMap::new(),
             branches: HashMap::new(),
         }
     }
@@ -81,15 +75,5 @@ impl HistoryGraph {
     }
     pub fn branches(&self) -> &HashMap<String, Branch> {
         &self.branches
-    }
-
-    fn insert_parent(&mut self, child: Oid, parent: Oid) {
-        self.parents
-            .entry(child)
-            .or_default()
-            .insert(parent);
-    }
-    pub fn parents(&mut self) -> &HashMap<Oid, HashSet<Oid>> {
-        &self.parents
     }
 }

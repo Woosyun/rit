@@ -3,7 +3,7 @@ use crate::{
 };
 use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq)]
 pub struct Commit {
     parents: Vec<Oid>, // zero or one oid represent normal commit, two represents merge commit
     root: Oid,

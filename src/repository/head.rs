@@ -5,7 +5,7 @@ use std::{
 use crate::prelude::*;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Head {
     None,
     Branch(String),
