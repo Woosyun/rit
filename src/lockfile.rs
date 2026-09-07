@@ -8,6 +8,10 @@
 // os-file locking
 // pros: kernel level locking. automatic releasing
 // cons: behaviour depends on OS ( flock on Unix, LockFileEx on Windows)
+//
+// and for releasing locking,
+// use explicit release method, not through drop trait.
+// since drop returns (), it cannot handle errors, including disk error
 
 use std::{
     path::{PathBuf, Path},

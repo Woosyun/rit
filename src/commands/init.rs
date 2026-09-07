@@ -3,8 +3,8 @@ pub struct Init {
 }
 impl Init {
     pub fn new<P: AsRef<std::path::Path>>(working_directory: P) -> std::io::Result<Self> {
-        // compare to `absolute`, `canonicalize` check symlink and so on to provide existence of
-        // the target path
+        // compare to `absolute`, `canonicalize` checks symlink and so on,
+        // to make sure the path exists
         let working_directory = std::path::Path::canonicalize(working_directory.as_ref())?;
 
         Ok(Self {
@@ -13,7 +13,7 @@ impl Init {
     }
 
     pub fn run(&self) -> std::io::Result<()> {
-        let repository_directory = self.working_directory.join(".git");
+        let repository_directory = self.working_directory.join(".rit");
 
         match std::fs::create_dir(&repository_directory) {
             Ok(_) => (),
@@ -29,7 +29,12 @@ impl Init {
             std::fs::create_dir(target_path)
         }).collect::<std::io::Result<Vec<_>>>()?;
 
-        println!("initialized empty repository!!");
+        let repository_path = Repository::new(working_directory)?;
+        let refs = Refs::new(repository_path)?;
+        // todo: initialize HEAD to refs/heads/master
+
+
+        println!("initialized repository!!");
 
         Ok(())
     }

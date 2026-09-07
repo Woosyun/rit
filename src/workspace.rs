@@ -1,15 +1,20 @@
-use std::path::{PathBuf, Path};
+use std::{fs, path, io};
 
 pub struct Workspace {
-    working_directory: PathBuf
+    working_directory: path::PathBuf
 }
 impl Workspace {
-    pub fn new<P: AsRef<Path>>(working_directory: P) -> Self {
-        Self {
-            working_directory: working_directory.as_ref().to_path_buf(),
-        }
+    pub fn new<P: AsRef<path::Path>>(working_directory: P) -> Result<Self, io::Error /*변경 가능*/ > {
+        let working_directory = working_directory.as_ref().canonicalize()?;
+        let ws = Self {
+            working_directory,
+        };
+        Ok(ws)
     }
 
-    // todo: store files and make them entries to return
-    //pub fn store_objects_and_list_entries(&self, db: &Database) -> std::io::Result<Vec<Entry>> {}
+    pub fn list_files(&self) -> Result<Vec<path::PathBuf>, io::Error> {
+        fs::read_dir(&self.working_directory)?
+            .map(|dir_entry_result| dir_entry_result.map(|dir_entry| dir_entry.path()))
+            .collect::<Result<Vec<path::PathBuf>, io::Error>>()
+    }
 }
