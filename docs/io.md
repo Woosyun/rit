@@ -1,7 +1,9 @@
-## test 방법
-* OS와 상호작용하는 부분은 분리하여 테스트 한다.
+## test method
+* Testing parts Interacting with operating system seperately is prefered.
 
 ```Rust
+/// example
+
 pub trait Write {
     pub fn write_all(&self, content: &[u8]) -> std::io::Result<()>;
 }
