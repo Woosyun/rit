@@ -22,3 +22,27 @@ std::process::Command? Container?
 {length of message:04}{Oid} {ref name}\n
 ```
 If length is 0, then it is flush packet
+
+## Pack
+Since length of message is 4bits, largest message size is  
+$$ FFFF_{16} = 65,636_{10} = 64kb $$
+
+Format of pack:
+- 4-byte, signature "PACK"
+- 4-byte, version number
+- 4-byte, number of objects
+- object records
+- SHA-1 hash from above contents
+
+Size of blob is little-endian so that it can represents arbirary size.
+Format of first header of a record:
+- 1 bit, last-byte indicator(1)
+- 3 bits, objects type  
+- 4 bits, part of contents length
+Format of other headers of the record:
+- 1 bit, last-byte indicator(0 or 1)
+- 7 bits, part of contents length  
+  
+**Data is transfered as packed. Recognizing end of the stream could be cumbersome**  
+1. overfetching
+2. endless waiting if rest of received stream is less than the size we are trying to read  

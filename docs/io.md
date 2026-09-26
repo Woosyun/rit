@@ -29,4 +29,4 @@ impl Write for FakeWrite {
 }
 ```
 
-* unit test coverage should be 100%
+* unit test coverage should be nearly 100%(?)
