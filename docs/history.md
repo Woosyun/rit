@@ -17,11 +17,16 @@ gitGraph
     commit id: "-M"
 ```
 
-Then
+Then  
+
 $$T_{-M} = T_M + d_{Md} + d_{Mb} = T_d + d_{Mb}$$
+
 $$d_{Mb} = -d_{bM} = -d_{ac}$$
-and
+
+and  
+
 $$T_{-M} = T_d - d_{ac}$$
+
 Therefore, reverting merge commit is same as removing effects of merged branch.
 
 **Remember that trying merge again c from -M does nothing because now c is common ancestor of -M and c itself. To merge again, use cherrypick or revert -M.**
