@@ -4,4 +4,4 @@
 4. Git compatibility
 5. deterministic behaviour
 6. safe for parallel usage
-7. *app can be represented as state machine*
+7. _app can be represented as state machine_

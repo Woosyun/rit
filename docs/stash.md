@@ -1,15 +1,23 @@
 From
-```
-a<--b<--c
-        |
-        HEAD
+
+```mermaid
+gitGraph
+    commit id: "a"
+    commit id: "b"
+    commit id: "c" tag: "HEAD"
 ```
 
 stash will create
-```
-a<--b<--c<--s2
-         \  /
-          s1
+
+```mermaid
+gitGraph
+    commit id: "a"
+    commit id: "b"
+    commit id: "c" tag: "HEAD"
+    branch s1
+    commit id: "s1"
+    checkout main
+    merge s1 id: "s2"
 ```
 
 s1 stores current state of Index.
