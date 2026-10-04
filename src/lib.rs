@@ -1,4 +1,4 @@
-pub mod commands;
+//pub mod commands;
 
 //pub mod repository;
 //pub mod workspace;
