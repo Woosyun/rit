@@ -1,20 +1,22 @@
-/// 
-/// Think about file-existence locking vs os-file-locking
-/// and replace this method to OS level file locking method someday
-///
-/// File-existence locking
-/// pros: true cross platform safety
-/// cons: fragile
-///
-/// OS-file locking
-/// pros: kernel level locking. automatic releasing
-/// cons: behaviour depends on OS ( flock on Unix, LockFileEx on Windows)
-///
-/// And for releasing locking,
-/// use explicit release method, not through drop trait.
-/// since drop returns (), it cannot handle errors, including disk error
-/// 
-/// todo: handle symlink
+// 
+// Think about file-existence locking vs os-file-locking
+// and replace this method to OS level file locking method someday
+//
+// File-existence locking
+// pros: true cross platform safety
+// cons: fragile
+//
+// OS-file locking
+// pros: kernel level locking. automatic releasing
+// cons: behaviour depends on OS ( flock on Unix, LockFileEx on Windows)
+//
+// And for releasing locking,
+// use explicit release method, not through drop trait.
+// since drop returns (), it cannot handle errors, including disk error
+// 
+
+// todo: handle symlink
+// todo: seperate Read/Write (?)
 
 use std::{
     path,
@@ -38,7 +40,6 @@ impl LockFile {
     }
 
     pub fn load(&mut self) -> io::Result<()> {
-        // tothink: is lock needed for just reading the content?
         let file = fs::OpenOptions::new()
             .write(false)
             .create_new(true)

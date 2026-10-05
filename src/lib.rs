@@ -1,5 +1,3 @@
-//pub mod commands;
-
-//pub mod repository;
-//pub mod workspace;
+pub mod commands;
 pub mod lockfile;
+pub mod workspace;
