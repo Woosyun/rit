@@ -1,4 +1,4 @@
-use std::{path, fs, io};
+use std::{path, fs, io, collections};
 
 pub struct Workspace {
     working_dir: path::PathBuf
@@ -10,18 +10,27 @@ impl Workspace {
         })
     }
 
-    /*
-    pub fn list_all(&self) -> io::Result<Vec<path::Path>> {
-        self.list_dir(self.working_dir)?
+    pub fn list_files(&self) -> io::Result<Vec<path::PathBuf>> {
+        let mut hash = vec![];
+        self.read_dir(&self.working_dir, &mut hash)?;
 
+        Ok(hash)
     }
-    */
-    fn list_dir<P: AsRef<path::Path>>(&self, dir: P) -> io::Result<Vec<path::PathBuf>> {
-        let paths = fs::read_dir(dir)?
-            .filter(|direntry| direntry.is_ok())
-            .map(|direntry| direntry.unwrap().path())
-            .collect::<Vec<path::PathBuf>>();
+    fn read_dir<P: AsRef<path::Path>>(&self, dir: P, hash: &mut Vec<path::PathBuf>) -> io::Result<()> {
+        for direntry in fs::read_dir(&dir)? {
+            let direntry = direntry?;
+            let entry_name = direntry.path();
+            let target_path = dir.as_ref().join(entry_name);
 
-        Ok(paths)
+            //todo: filter with .gitignore
+
+            if direntry.file_type()?.is_dir() {
+                self.read_dir(target_path, hash)?;
+            } else {
+                hash.push(target_path);
+            }
+        }
+
+        Ok(())
     }
 }
