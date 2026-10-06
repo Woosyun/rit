@@ -1,13 +1,10 @@
-use std::{path, io, fs};
+use std::{fs, io, path};
 
 pub const REPOSITORY_DIR: &'static str = ".rit";
-pub const DEFAULT_SUB_DIRS: [&'static str; 2]= [
-    "objects",
-    "refs",
-];
+pub const DEFAULT_SUB_DIRS: [&'static str; 2] = ["objects", "refs"];
 
 pub struct Init {
-    working_directory: path::PathBuf
+    working_directory: path::PathBuf,
 }
 impl Init {
     // responsible for get the path right
@@ -16,9 +13,7 @@ impl Init {
         // to make sure the path exists
         let working_directory = path::Path::canonicalize(working_directory.as_ref())?;
 
-        Ok(Self {
-            working_directory
-        })
+        Ok(Self { working_directory })
     }
 
     pub fn run(&self) -> std::io::Result<()> {
@@ -27,9 +22,13 @@ impl Init {
         match fs::create_dir(&repository_directory) {
             Ok(_) => (),
             Err(error) => match error.kind() {
-                io::ErrorKind::AlreadyExists => { return Ok(()); },
-                _ => { return Err(error); },
-            }
+                io::ErrorKind::AlreadyExists => {
+                    return Ok(());
+                }
+                _ => {
+                    return Err(error);
+                }
+            },
         }
 
         for sub_dir in DEFAULT_SUB_DIRS {

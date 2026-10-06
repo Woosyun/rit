@@ -1,4 +1,4 @@
-// 
+//
 // Think about file-existence locking vs os-file-locking
 // and replace this method to OS level file locking method someday
 //
@@ -13,16 +13,9 @@
 // And for releasing locking,
 // use explicit release method, not through drop trait.
 // since drop returns (), it cannot handle errors, including disk error
-// 
+//
 
-// todo: handle symlink
-// todo: seperate Read/Write (?)
-
-use std::{
-    path,
-    fs,
-    io,
-};
+use std::{fs, io, path};
 
 pub struct LockFile {
     path: path::PathBuf,
@@ -35,7 +28,7 @@ impl LockFile {
         Self {
             path: lock_path,
             target_path: path.as_ref().to_path_buf(),
-            _file: None
+            _file: None,
         }
     }
 
