@@ -5,7 +5,7 @@ const BLOB_TYPE: &'static str = "blob";
 pub struct Blob(String);
 impl Blob {
     pub fn new(content: String) -> Self {
-        Blob (content)
+        Blob(content)
     }
 }
 
