@@ -16,6 +16,7 @@
 //
 
 use std::{fs, io, path};
+use std::io::prelude::*;
 
 pub struct LockFile {
     path: path::PathBuf,
@@ -34,6 +35,7 @@ impl LockFile {
 
     pub fn load(&mut self) -> io::Result<()> {
         let file = fs::OpenOptions::new()
+            .read(true)
             .write(false)
             .create_new(true)
             .open(&self.path)?;
@@ -43,11 +45,18 @@ impl LockFile {
     }
     pub fn load_mut(&mut self) -> io::Result<()> {
         let file = fs::OpenOptions::new()
+            .read(false)
             .write(true)
             .create_new(true)
             .open(&self.path)?;
         self._file = Some(file);
 
+        Ok(())
+    }
+    pub fn write(&mut self, content: &[u8]) -> io::Result<()> {
+        if let Some(f) = &mut self._file {
+            f.write_all(content)?;
+        }
         Ok(())
     }
     pub fn commit(mut self) -> io::Result<()> {
