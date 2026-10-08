@@ -1,10 +1,14 @@
 pub mod blob;
 pub mod entry;
-pub mod tree;
 pub mod oid;
+pub mod tree;
 
 use crate::lockfile;
 use std::{error::Error, fs, path};
+
+use flate2::Compression;
+use flate2::write::ZlibEncoder;
+use std::io::Write;
 
 pub trait IntoObject {
     fn into_object(self) -> String;
@@ -22,15 +26,21 @@ impl Database {
 
     pub fn store(&self, object: impl IntoObject) -> Result<(), Box<dyn Error>> {
         let obj = object.into_object();
+        let content = obj.as_bytes();
         let oid = oid::Oid::new(&obj)?;
+
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
+        e.write_all(content)?;
+        let compressed = e.finish()?;
 
         let target_dir = self.path.join(oid.dir_name());
         fs::create_dir(&target_dir)?;
         let target_path = target_dir.join(oid.file_name());
         let mut lf = lockfile::LockFile::new(target_path);
         lf.load_mut()?;
-        todo!("check content format and compress with zlib");
-        //lf.write(obj.as_bytes())?;
+        lf.write(&compressed)?;
+
+        Ok(())
     }
     pub fn retrieve() {}
 }

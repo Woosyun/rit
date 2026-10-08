@@ -9,7 +9,7 @@ impl Oid {
         let hash = Sha1::digest(content);
         oid.copy_from_slice(hash.as_slice());
 
-        Ok(Self ( oid ))
+        Ok(Self(oid))
     }
     pub fn dir_name(&self) -> String {
         self.0[0..2]
