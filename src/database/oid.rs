@@ -1,10 +1,10 @@
 use sha1::{Digest, Sha1};
 use std::error;
 
-pub struct Oid([u8; 20]);
+pub struct Oid(pub [u8; 20]);
 
 impl Oid {
-    pub fn new(content: &str) -> Result<Self, Box<dyn error::Error>> {
+    pub fn new<U: AsRef<[u8]>>(content: U) -> Result<Self, Box<dyn error::Error>> {
         let mut oid = [0u8; 20];
         let hash = Sha1::digest(content);
         oid.copy_from_slice(hash.as_slice());

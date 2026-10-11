@@ -1,3 +1,5 @@
+pub mod ignore;
+
 use std::{error, fs, io, path};
 
 pub struct Workspace {
@@ -40,6 +42,15 @@ impl Workspace {
         }
 
         Ok(())
+    }
+
+    pub fn relative_path<P: AsRef<path::Path>>(
+        &self,
+        path: P,
+    ) -> Result<path::PathBuf, path::StripPrefixError> {
+        let re = path.as_ref().strip_prefix(&self.working_dir)?.to_path_buf();
+
+        Ok(re)
     }
 }
 

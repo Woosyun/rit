@@ -15,8 +15,8 @@
 // since drop returns (), it cannot handle errors, including disk error
 //
 
-use std::{fs, io, path};
 use std::io::prelude::*;
+use std::{fs, io, path};
 
 pub struct LockFile {
     path: path::PathBuf,

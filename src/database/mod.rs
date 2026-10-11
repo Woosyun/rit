@@ -1,20 +1,27 @@
 pub mod blob;
-pub mod entry;
+pub use blob::*;
 pub mod oid;
+pub use oid::*;
 pub mod tree;
+pub use tree::*;
+pub mod commit;
+pub use commit::*;
 
 use crate::lockfile;
-use std::{error::Error, fs, path};
+use std::{error, fs, path};
 
 use flate2::Compression;
-use flate2::write::ZlibEncoder;
-use std::io::Write;
+#[allow(unused)]
+use flate2::{read::ZlibDecoder, write::ZlibEncoder};
+#[allow(unused)]
+use std::io::{Read, Write};
 
 pub trait IntoObject {
-    fn into_object(self) -> String;
+    fn into_object(self) -> Vec<u8>;
 }
 
 const DATABASE_DIR: &'static str = "objects";
+
 pub struct Database {
     path: path::PathBuf,
 }
@@ -24,13 +31,13 @@ impl Database {
         Self { path }
     }
 
-    pub fn store(&self, object: impl IntoObject) -> Result<(), Box<dyn Error>> {
+    //todo: split function for testing
+    pub fn store(&self, object: impl IntoObject) -> Result<oid::Oid, Box<dyn error::Error>> {
         let obj = object.into_object();
-        let content = obj.as_bytes();
         let oid = oid::Oid::new(&obj)?;
 
         let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
-        e.write_all(content)?;
+        e.write_all(&obj)?;
         let compressed = e.finish()?;
 
         let target_dir = self.path.join(oid.dir_name());
@@ -40,7 +47,23 @@ impl Database {
         lf.load_mut()?;
         lf.write(&compressed)?;
 
-        Ok(())
+        Ok(oid)
     }
-    pub fn retrieve() {}
+
+    /*
+    pub fn retrieve(&self, oid: oid::Oid) -> Result<impl IntoObject, Box<dyn error::Error>> {
+        let target_path = self.path.join(oid.dir_name()).join(oid.file_name());
+        let compressed = fs::read(target_path)?;
+
+        let mut decompressed: Vec<u8> = Vec::new();
+        let mut decoder = ZlibDecoder::new(&decompressed[..]);
+        decoder.read_to_end(&mut compressed)?;
+
+        let object_type = decompressed
+
+        //todo: read type, size, content
+
+        Ok()
+    }
+    */
 }
