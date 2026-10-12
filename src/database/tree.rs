@@ -1,26 +1,30 @@
 pub const EXECUTABLE_FILE_MODE: u16 = 0o100755;
 pub const READONLY_FILE_MODE: u16 = 0o100644;
-//const DIR: u16 = 0o040000
+pub const DIRECTORY_MODE: u16 = 0o040000;
 
-type Mode = String;
+type Mode = u16;
 type Oid = super::Oid;
-type Name = String;
-pub type Entry = (Mode, Oid, Name);
+type EntryName = String;
+pub type Entry = (Mode, Oid, EntryName);
 
 pub struct Tree {
     entries: Vec<Entry>,
 }
 impl Tree {
+    /*
     pub fn new() -> Self {
         Tree { entries: vec![] }
     }
+    */
     pub fn from(entries: Vec<Entry>) -> Self {
         Tree { entries }
     }
 
+    /*
     pub fn insert(&mut self, entry: Entry) {
         self.entries.push(entry);
     }
+    */
 }
 
 impl super::IntoObject for Tree {
