@@ -22,15 +22,22 @@ impl Commit {
         }
     }
 }
+
+#[derive(Clone)]
 pub struct Author {
     name: String,
     email: String,
     timestamp: u64,
 }
-pub struct Committer {
-    name: String,
-    email: String,
-    timestamp: u64,
+pub type Committer = Author;
+impl Author {
+    pub fn new(name: String, email: String, timestamp: u64) -> Self {
+        Self {
+            name,
+            email,
+            timestamp,
+        }
+    }
 }
 
 impl super::IntoObject for Commit {

@@ -15,7 +15,7 @@ impl Init {
     }
 
     pub fn run(&self) -> std::io::Result<()> {
-        let repository_directory = self.working_directory.join(repository::DEFAULT_NAME);
+        let repository_directory = self.working_directory.join(repository::DIR_NAME);
 
         match fs::create_dir(&repository_directory) {
             Ok(_) => (),
@@ -29,11 +29,13 @@ impl Init {
             },
         }
 
-        for sub_dir in repository::DEFAULT_SUBS {
-            let target_path = repository_directory.join(sub_dir);
+        /*
+                for sub_dir in repository::DEFAULT_SUBS {
+                    let target_path = repository_directory.join(sub_dir);
 
-            fs::create_dir(target_path)?
-        }
+                    fs::create_dir(target_path)?
+                }
+        */
 
         Ok(())
     }

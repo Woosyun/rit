@@ -33,7 +33,8 @@ impl super::IntoObject for Tree {
         let mut entries = self.entries;
         entries.sort_by(|from, to| from.2.cmp(&to.2));
 
-        //SPACE, NULL(\0) can be better to handle if seperated?
+        //SPACE, NULL(\0)?
+        //todo: add oid for tree
         entries
             .into_iter()
             .map(|(mode, oid, name)| {
@@ -41,7 +42,6 @@ impl super::IntoObject for Tree {
                     format!("{mode} ").into_bytes(),
                     format!("{name}\0").into_bytes(),
                     oid.0.to_vec(),
-                    //todo: add oid
                 ]
                 .concat()
             })
