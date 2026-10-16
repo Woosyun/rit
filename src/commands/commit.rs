@@ -1,33 +1,40 @@
-use crate::{database, repository, workspace};
-use std::{collections, error, fs, io, path};
+use crate::{database, index, refs, repository, workspace};
+use std::{collections, error, fs, path};
 
 pub struct Commit {
     ws: workspace::Workspace,
     db: database::Database,
+    refs: refs::Refs,
+    message: String,
+    author: database::Author,
+    committer: database::Committer,
 }
 impl Commit {
-    pub fn new<P: AsRef<path::Path>>(workdir: P) -> Result<Self, Box<dyn error::Error>> {
+    pub fn new<P: AsRef<path::Path>>(
+        workdir: P,
+        message: String,
+        author: database::Author,
+        committer: database::Committer,
+    ) -> Result<Self, Box<dyn error::Error>> {
         let workdir = workdir.as_ref().canonicalize()?;
-        let db = database::Database::new(workdir.join(repository::DEFAULT_NAME));
+        let repo = workdir.join(repository::DIR_NAME);
+        let db = database::Database::new(&repo);
         let ws = workspace::Workspace::new(workdir)?;
+        let refs = refs::Refs::new(repo);
 
-        Ok(Commit { ws, db })
-    }
-    fn set_parent(&self) -> io::Result<database::Oid> {
-        todo!()
-    }
-    fn set_message(self, message: String) -> () {
-        todo!()
-    }
-    fn set_author(self, name: String, email: String, timestamp: u64) {
-        todo!()
-    }
-    fn set_committer(self, name: String, email: String, timestamp: u64) {
-        todo!();
+        Ok(Commit {
+            ws,
+            db,
+            refs,
+            message,
+            author,
+            committer,
+        })
     }
 
-    pub fn execute(&self) -> Result<(), Box<dyn error::Error>> {
-        let mut entries = vec![];
+    pub fn execute(self) -> Result<(), Box<dyn error::Error>> {
+        let mut index = index::Index::new(&self.ws.path).load_mut()?;
+
         for path in self.ws.list_files()? {
             let content = fs::read(&path)?;
             let blob = database::Blob::new(content);
@@ -35,20 +42,21 @@ impl Commit {
             let metadata = fs::metadata(&path)?;
             let relative_path = self.ws.relative_path(path)?;
 
-            //let entry = index::Entry::new(relative_path, oid, metadata);
-            //entries.push(entry);
-            entries.push((metadata, relative_path, oid));
+            //entries.push((metadata, relative_path, oid));
+            index.insert(relative_path, metadata, oid);
         }
-        //todo: update index
-        //tothink: it is important to decide where to sort
 
         let mut rectree = RecTree::new();
-        for (metadata, relative_path, oid) in entries.into_iter() {
-            rectree.insert(metadata, relative_path, oid);
+        for (relative_path, index_entry) in index.entries().iter() {
+            rectree.insert(index_entry.mode(), relative_path, index_entry.oid());
         }
         let (_, root_oid, _) = RecEntry::Tree(rectree).store("/".to_string(), &self.db)?;
 
-        //let commit = database::Commit::new(root_oid,
+        let parent = self.refs.read_head()?.oid()?.clone();
+        let commit =
+            database::Commit::new(root_oid, parent, self.author, self.committer, self.message);
+        let new_head = self.db.store(commit)?;
+        self.refs.update_head(new_head)?;
 
         Ok(())
     }
@@ -64,17 +72,7 @@ impl RecTree {
             entries: collections::HashMap::new(),
         }
     }
-    pub fn insert(
-        &mut self,
-        metadata: fs::Metadata,
-        relative_path: path::PathBuf,
-        oid: database::Oid,
-    ) {
-        let mode = if metadata.permissions().readonly() {
-            database::READONLY_FILE_MODE
-        } else {
-            database::EXECUTABLE_FILE_MODE
-        };
+    fn insert(&mut self, mode: &u16, relative_path: &path::Path, oid: &database::Oid) {
         let mut paths = relative_path.components();
         let Some(path::Component::Normal(entry_name)) = paths.next() else {
             return;
@@ -82,7 +80,7 @@ impl RecTree {
         let Some(entry_name) = entry_name.to_str() else {
             return; //not a valid unicode. tothink: is this rigth behaviour?
         };
-        self.add(paths, entry_name, mode, oid);
+        self.add(paths, entry_name, mode.clone(), oid.clone());
     }
     fn add(
         &mut self,
@@ -109,6 +107,8 @@ impl RecTree {
     }
 
     //database::Tree로 바꿔서 저장하고 database::Oid를 리턴
+    //rectree and recentry should not have responsibility
+    //of storing object in database
     fn store(self, db: &database::Database) -> Result<database::Oid, Box<dyn error::Error>> {
         let db_entries = self
             .entries
@@ -124,7 +124,7 @@ enum RecEntry {
     Entry(u16, database::Oid),
 }
 impl RecEntry {
-    pub fn store(
+    fn store(
         self,
         filename: String,
         db: &database::Database,

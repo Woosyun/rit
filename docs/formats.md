@@ -25,7 +25,7 @@
     4. mtime nanoseconds fractions
     5. dev, id of the HW device the file resides on
     6. ino, number of inode storing its attributes
-    7. mode: String, permissions  
+    7. mode: String, permissions ### todo: ???
         1. 4-bit object type
         2. 3-bit unused
         3. 9-bit unix permissions, only 0755 and 0644 are valid for regular files.

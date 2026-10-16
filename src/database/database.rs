@@ -10,6 +10,9 @@ use std::io::{Read, Write};
 pub trait IntoObject {
     fn into_object(self) -> Vec<u8>;
 }
+pub trait FromObject {
+    fn from_object<U: AsRef<[u8]>>(content: U) -> Self;
+}
 
 const DIR_NAME: &'static str = "objects";
 

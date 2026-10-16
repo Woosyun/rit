@@ -1,6 +1,7 @@
 use sha1::{Digest, Sha1};
 use std::error;
 
+#[derive(Clone)]
 pub struct Oid(pub [u8; 20]);
 
 impl Oid {
@@ -22,5 +23,11 @@ impl Oid {
             .into_iter()
             .map(|b| format!("{:02x}", b))
             .collect::<String>()
+    }
+}
+
+impl Default for Oid {
+    fn default() -> Self {
+        Oid([0; 20])
     }
 }

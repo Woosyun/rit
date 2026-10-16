@@ -18,7 +18,7 @@ pub fn init_succeed_on_empty_directory() -> Result<(), Box<dyn error::Error>> {
     let temp_dir = TempDir::new("init_succeed_on_empty_directory")?;
     init::Init::new(temp_dir.path())?.run()?;
 
-    let repository_dir = temp_dir.path().join(repository::DEFAULT_NAME);
+    let repository_dir = temp_dir.path().join(repository::DIR_NAME);
     check_repository(repository_dir)?;
 
     Ok(())
@@ -27,7 +27,7 @@ pub fn init_succeed_on_empty_directory() -> Result<(), Box<dyn error::Error>> {
 #[test]
 pub fn init_pass_on_clean_repository() -> Result<(), Box<dyn error::Error>> {
     let temp_dir = TempDir::new("init_pass_on_clean_repository")?;
-    let repo_dir = temp_dir.path().join(repository::DEFAULT_NAME);
+    let repo_dir = temp_dir.path().join(repository::DIR_NAME);
 
     fs::create_dir(&repo_dir)?;
     fs::create_dir(repo_dir.join("objects"))?;

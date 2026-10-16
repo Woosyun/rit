@@ -1,6 +1,6 @@
 pub struct Commit {
     tree: super::Oid,
-    parent: Option<super::Oid>,
+    parent: super::Oid,
     author: Author,
     committer: Committer,
     message: String,
@@ -8,7 +8,7 @@ pub struct Commit {
 impl Commit {
     pub fn new(
         root_oid: super::Oid,
-        parent: Option<super::Oid>,
+        parent: super::Oid,
         author: Author,
         committer: Committer,
         message: String,
@@ -43,11 +43,6 @@ impl Author {
 impl super::IntoObject for Commit {
     fn into_object(self) -> Vec<u8> {
         let tree = [format!("tree ").into_bytes(), self.tree.0.to_vec()].concat();
-        let parent = if let Some(parent) = self.parent {
-            [format!("parent ").into_bytes(), parent.0.to_vec()].concat()
-        } else {
-            format!("").into_bytes()
-        };
         let author = format!(
             "{} <#{}> #{}",
             self.author.name, self.author.email, self.author.timestamp
@@ -60,7 +55,7 @@ impl super::IntoObject for Commit {
         .into_bytes();
         [
             tree,
-            parent,
+            self.parent.0.to_vec(),
             author,
             committer,
             self.message.as_bytes().to_vec(),

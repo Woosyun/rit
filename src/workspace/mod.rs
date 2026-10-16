@@ -1,20 +1,18 @@
-pub mod ignore;
-
 use std::{error, fs, io, path};
 
 pub struct Workspace {
-    working_dir: path::PathBuf,
+    pub path: path::PathBuf,
 }
 impl Workspace {
     pub fn new<P: AsRef<path::Path>>(working_dir: P) -> io::Result<Self> {
         Ok(Self {
-            working_dir: fs::canonicalize(working_dir.as_ref())?,
+            path: fs::canonicalize(working_dir.as_ref())?,
         })
     }
 
     pub fn list_files(&self) -> Result<Vec<path::PathBuf>, Box<dyn error::Error>> {
         let mut hash = vec![];
-        self.read_dir(&self.working_dir, &mut hash)?;
+        self.read_dir(&self.path, &mut hash)?;
 
         Ok(hash)
     }
@@ -36,7 +34,7 @@ impl Workspace {
             } else if file_type.is_dir() {
                 self.read_dir(target_path, hash)?;
             } else {
-                let relative_path = target_path.strip_prefix(&self.working_dir)?.to_path_buf();
+                let relative_path = target_path.strip_prefix(&self.path)?.to_path_buf();
                 hash.push(relative_path);
             }
         }
@@ -48,7 +46,7 @@ impl Workspace {
         &self,
         path: P,
     ) -> Result<path::PathBuf, path::StripPrefixError> {
-        let re = path.as_ref().strip_prefix(&self.working_dir)?.to_path_buf();
+        let re = path.as_ref().strip_prefix(&self.path)?.to_path_buf();
 
         Ok(re)
     }

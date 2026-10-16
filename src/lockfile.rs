@@ -75,11 +75,14 @@ impl Drop for LockFile {
     }
 }
 
-/*
 impl std::ops::Deref for LockFile {
-    type Target = Path;
+    type Target = Option<fs::File>;
     fn deref(&self) -> &Self::Target {
-        &self.path
+        &self._file
     }
 }
-*/
+impl std::ops::DerefMut for LockFile {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self._file
+    }
+}
