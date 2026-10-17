@@ -15,13 +15,12 @@
 // since drop returns (), it cannot handle errors, including disk error
 //
 
-use std::io::prelude::*;
 use std::{fs, io, path};
 
 pub struct LockFile {
     path: path::PathBuf,
     target_path: path::PathBuf,
-    _file: Option<fs::File>,
+    file: Option<fs::File>,
 }
 impl LockFile {
     pub fn new<P: AsRef<path::Path>>(path: P) -> LockFile {
@@ -29,7 +28,7 @@ impl LockFile {
         Self {
             path: lock_path,
             target_path: path.as_ref().to_path_buf(),
-            _file: None,
+            file: None,
         }
     }
 
@@ -39,7 +38,7 @@ impl LockFile {
             .write(false)
             .create_new(true)
             .open(&self.path)?;
-        self._file = Some(file);
+        self.file = Some(file);
 
         Ok(())
     }
@@ -49,21 +48,47 @@ impl LockFile {
             .write(true)
             .create_new(true)
             .open(&self.path)?;
-        self._file = Some(file);
+        self.file = Some(file);
 
         Ok(())
     }
+    /*
     pub fn write(&mut self, content: &[u8]) -> io::Result<()> {
         if let Some(f) = &mut self._file {
             f.write_all(content)?;
         }
         Ok(())
     }
+    */
     pub fn commit(mut self) -> io::Result<()> {
         // For Windows compatibility, drop file before renaming.
-        drop(self._file.take());
+        drop(self.file.take());
 
         fs::rename(&self.path, &self.target_path)
+    }
+}
+
+impl io::Write for LockFile {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if let Some(f) = &mut self.file {
+            return f.write(buf);
+        }
+        //means buffer is empty or file cannot accepts bytes anymore.
+        Ok(0)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        if let Some(f) = &mut self.file {
+            return f.flush();
+        }
+        Ok(())
+    }
+}
+impl io::Read for LockFile {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if let Some(f) = &mut self.file {
+            return f.read(buf);
+        }
+        Ok(0)
     }
 }
 
@@ -75,6 +100,7 @@ impl Drop for LockFile {
     }
 }
 
+/*
 impl std::ops::Deref for LockFile {
     type Target = Option<fs::File>;
     fn deref(&self) -> &Self::Target {
@@ -86,3 +112,4 @@ impl std::ops::DerefMut for LockFile {
         &mut self._file
     }
 }
+*/
