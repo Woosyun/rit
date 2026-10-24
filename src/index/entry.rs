@@ -10,13 +10,13 @@ pub struct Entry {
     dev: u32,
     ino: u32,
     //todo: define mode
-    mode: u16,
+    mode: u32,
     uid: u32,
     gid: u32,
     file_size: u32,
     oid: database::Oid,
     flags: Flags,
-    //extened_flags: u16,
+    //(optional?) extened_flags: u16,
     file_name: String,
 }
 impl Entry {
@@ -28,7 +28,7 @@ impl Entry {
             mtime_nano: stat.mtime_nsec() as u32,
             dev: stat.dev() as u32,
             ino: stat.ino() as u32,
-            mode: stat.mode() as u16,
+            mode: stat.mode() as u32,
             uid: stat.uid() as u32,
             gid: stat.gid() as u32,
             file_size: stat.size() as u32,
@@ -37,7 +37,7 @@ impl Entry {
             file_name,
         }
     }
-    pub fn mode(&self) -> &u16 {
+    pub fn mode(&self) -> &u32 {
         &self.mode
     }
     pub fn oid(&self) -> &database::Oid {

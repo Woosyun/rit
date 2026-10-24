@@ -10,9 +10,9 @@
 
 ## [Index](https://git-scm.com/docs/index-format)
 1. 12-byte Header
-2. Entries
-3. 20-byte hash
-* Sort by file name(String of unsigned bytes) asc, sort by stage asc
+2. Entries // Sort by file name(String of unsigned bytes) asc, sort by stage asc
+3. Extensions
+4. 20-byte hash (SHA-1)
 ### Header
 1. 4-byte, signature. {"D", "I", "R", "C"} (stands for "dircache")
 2. 4-byte, version number. supported ones are 2, 3, 4.
@@ -25,13 +25,19 @@
     4. mtime nanoseconds fractions
     5. dev, id of the HW device the file resides on
     6. ino, number of inode storing its attributes
-    7. mode: String, permissions ### todo: ???
-        1. 4-bit object type
-        2. 3-bit unused
-        3. 9-bit unix permissions, only 0755 and 0644 are valid for regular files.
+    7. mode == permissions
+        1. 16-bit unused, 00 00
+        2. 4-bit object type
+        3. 3-bit unused
+        4. 9-bit unix permissions, only 0755 and 0644 are valid for regular files.
+        - ex) 000081a4, byte representation.
+            => 0b_0000_0000_0000_0000_1000_0001_1010_0100
+            => (4-bit object type == 1000 == regular file,
+                3-bit unused == 000,
+                unix permission == 1 1010 0100 == 0o644)
     8. uid, user id
     9. gid, group id
-    10. file size
+    10. file size (byte)
 2. 20-byte SHA-1 hash, packed bytes form
 3. 2-byte set of flags: 16-bit unsigned big-endian number, pack serveral pieces of information (high to low)
     1. 1-bit assume-valid flag
@@ -42,8 +48,10 @@
     1. 1-bit reserved for future
     2. 1-bit skip-worktree flag (used by sparse checkout)
     3. 1-bit intent-to-add flag (used by "git add -N")
-    4. 13-bit unused, must be zero
+    4. 13-bit unused, must be zero // todo: need to check
 5. File name
 6. Padded with "\0" to make total length multiple of 8 bytes. At least 1 null byte
-
-
+### Extensions
+1. 4-byte extension signature
+2. 32-bit size of extension
+3. Extension data
