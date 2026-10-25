@@ -1,4 +1,5 @@
-use crate::{database, index, refs, repository, workspace};
+use crate::commands::command::*;
+use crate::{database, index, refs, workspace};
 use std::{collections, error, fs, path};
 
 pub struct Commit {
@@ -9,30 +10,11 @@ pub struct Commit {
     author: database::Author,
     committer: database::Committer,
 }
-impl Commit {
-    pub fn new<P: AsRef<path::Path>>(
-        workdir: P,
-        message: String,
-        author: database::Author,
-        committer: database::Committer,
-    ) -> Result<Self, Box<dyn error::Error>> {
-        let workdir = workdir.as_ref().canonicalize()?;
-        let repo = workdir.join(repository::DIR_NAME);
-        let db = database::Database::new(&repo);
-        let ws = workspace::Workspace::new(workdir)?;
-        let refs = refs::Refs::new(repo);
-
-        Ok(Commit {
-            ws,
-            db,
-            refs,
-            message,
-            author,
-            committer,
-        })
+impl Command<Commit, CommitBuilder> for Commit {
+    fn builder() -> CommitBuilder {
+        CommitBuilder::new()
     }
-
-    pub fn execute(self) -> Result<(), Box<dyn error::Error>> {
+    fn execute(self) -> Result<(), Box<dyn error::Error>> {
         let mut index = index::Index::new(&self.ws.path).load_mut()?;
 
         for path in self.ws.list_files()? {
@@ -56,9 +38,39 @@ impl Commit {
         let commit =
             database::Commit::new(root_oid, parent, self.author, self.committer, self.message);
         let new_head = self.db.store(commit)?;
-        self.refs.update_head(new_head)?;
+        //self.refs.update_head(new_head)?;
 
         Ok(())
+    }
+}
+
+#[derive(Default)]
+pub struct CommitBuilder {
+    ws: Option<workspace::Workspace>,
+    db: Option<database::Database>,
+    refs: Option<refs::Refs>,
+    message: Option<String>,
+    author: Option<database::Author>,
+    committer: Option<database::Committer>,
+}
+impl CommandBuilder<Commit> for CommitBuilder {
+    fn new() -> Self {
+        Self {
+            ..Default::default()
+        }
+    }
+    fn build(self) -> Result<Commit, Box<dyn error::Error>> {
+        let commit = Commit {
+            ws: self.ws.ok_or_else(|| "no workspace found".to_string())?,
+            db: self.db.ok_or_else(|| "no database found".to_string())?,
+            refs: self.refs.ok_or_else(|| "no refs found".to_string())?,
+            message: self.message.ok_or_else(|| "no message found".to_string())?,
+            author: self.author.ok_or_else(|| "no author found".to_string())?,
+            committer: self
+                .committer
+                .ok_or_else(|| "no committer found".to_string())?,
+        };
+        Ok(commit)
     }
 }
 
@@ -72,7 +84,7 @@ impl RecTree {
             entries: collections::HashMap::new(),
         }
     }
-    fn insert(&mut self, mode: &u16, relative_path: &path::Path, oid: &database::Oid) {
+    fn insert(&mut self, mode: &u32, relative_path: &path::Path, oid: &database::Oid) {
         let mut paths = relative_path.components();
         let Some(path::Component::Normal(entry_name)) = paths.next() else {
             return;
@@ -86,7 +98,7 @@ impl RecTree {
         &mut self,
         mut paths: path::Components,
         entry_name: &str,
-        mode: u16,
+        mode: u32,
         oid: database::Oid,
     ) {
         if let Some(path::Component::Normal(next_entry_name)) = paths.next() {
@@ -121,7 +133,7 @@ impl RecTree {
 }
 enum RecEntry {
     Tree(RecTree),
-    Entry(u16, database::Oid),
+    Entry(u32, database::Oid),
 }
 impl RecEntry {
     fn store(
@@ -134,7 +146,7 @@ impl RecEntry {
                 let oid = rectree.store(db)?;
                 (database::DIRECTORY_MODE, oid, filename)
             }
-            RecEntry::Entry(mode, oid) => (mode, oid, filename) as database::Entry,
+            RecEntry::Entry(mode, oid) => (mode, oid, filename).into(),
         };
         Ok(entry)
     }

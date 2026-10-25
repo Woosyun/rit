@@ -1,4 +1,5 @@
-use rit::{commands::init, repository};
+use rit::commands::{Command, CommandBuilder};
+use rit::{commands, repository};
 use std::{error, fs, io, path};
 use tempdir::TempDir;
 
@@ -16,7 +17,11 @@ fn check_repository<P: AsRef<path::Path>>(repo_dir: P) -> io::Result<()> {
 #[test]
 pub fn init_succeed_on_empty_directory() -> Result<(), Box<dyn error::Error>> {
     let temp_dir = TempDir::new("init_succeed_on_empty_directory")?;
-    init::Init::new(temp_dir.path())?.run()?;
+    //init::Init::new(temp_dir.path())?.run()?;
+    commands::Init::builder()
+        .working_directory(temp_dir.path())
+        .build()?
+        .execute()?;
 
     let repository_dir = temp_dir.path().join(repository::DIR_NAME);
     check_repository(repository_dir)?;
@@ -42,7 +47,10 @@ pub fn init_pass_on_clean_repository() -> Result<(), Box<dyn error::Error>> {
         .write_all(b"branch: refs/heads/main")?;
     */
 
-    init::Init::new(temp_dir.path())?.run()?;
+    commands::Init::builder()
+        .working_directory(temp_dir.path())
+        .build()?
+        .execute()?;
     check_repository(repo_dir)?;
 
     Ok(())

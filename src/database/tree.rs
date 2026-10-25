@@ -1,8 +1,9 @@
-pub const EXECUTABLE_FILE_MODE: u16 = 0o100755;
-pub const READONLY_FILE_MODE: u16 = 0o100644;
-pub const DIRECTORY_MODE: u16 = 0o040000;
+pub const EXECUTABLE_FILE_MODE: Mode = 0o100755;
+pub const READONLY_FILE_MODE: Mode = 0o100644;
+pub const DIRECTORY_MODE: Mode = 0o040000;
 
-type Mode = u16;
+/// Mode would be stored as 6-bytes
+type Mode = u32;
 type Oid = super::Oid;
 type EntryName = String;
 pub type Entry = (Mode, Oid, EntryName);
