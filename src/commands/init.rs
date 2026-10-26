@@ -3,7 +3,15 @@ use crate::repository;
 use std::{error, fs, io, path};
 
 /// A Command for initializing repository.
-/// Use [`InitBuilder`] to use this command.
+/// ## Usage
+///
+/// ```
+/// Init::builder()
+///     .working_directory(env::current_dir()?)
+///     .build()
+///     .execute()?
+/// ```
+///
 pub struct Init {
     working_directory: path::PathBuf,
 }
@@ -26,7 +34,7 @@ impl Command<Init, InitBuilder> for Init {
             },
         }
 
-        for sub_dir in repository::DEFAULT_SUB_DIRS {
+        for sub_dir in ["objects"] {
             let target_path = repository_directory.join(sub_dir);
             fs::create_dir(target_path)?
         }

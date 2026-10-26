@@ -1,15 +1,21 @@
 use std::{error, fs, io, path};
 
+/// Responsibe for handle workspace.
+/// To read workspace and get file paths, use [`Workspace::list_files`].
 pub struct Workspace {
     pub path: path::PathBuf,
 }
 impl Workspace {
+    //todo: Use design pattern.
     pub fn new<P: AsRef<path::Path>>(working_dir: P) -> io::Result<Self> {
         Ok(Self {
             path: fs::canonicalize(working_dir.as_ref())?,
         })
     }
 
+    /// This method returns vector of paths representing all files in the workspace.
+    ///
+    /// **Note** Result is returned unsorted
     pub fn list_files(&self) -> Result<Vec<path::PathBuf>, Box<dyn error::Error>> {
         let mut hash = vec![];
         self.read_dir(&self.path, &mut hash)?;
@@ -42,6 +48,7 @@ impl Workspace {
         Ok(())
     }
 
+    /// this method returns relative path from working directory.
     pub fn relative_path<P: AsRef<path::Path>>(
         &self,
         path: P,

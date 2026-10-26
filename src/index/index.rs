@@ -26,6 +26,7 @@ impl IndexLoader {
     }
 }
 
+/// `Index` is responsible for dealing with index.
 #[derive(Default)]
 pub struct Index {
     lockfile: Option<lockfile::LockFile>,

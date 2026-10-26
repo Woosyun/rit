@@ -7,15 +7,25 @@ use flate2::{read::ZlibDecoder, write::ZlibEncoder};
 #[allow(unused)]
 use std::io::{Read, Write};
 
+/// Trait for transforming
+/// from Blob/Tree/Commit
+/// to raw object to be stored.
 pub trait IntoObject {
     fn into_object(self) -> Vec<u8>;
 }
+
+/// Trait for transforming
+/// from raw object
+/// to Blob/Tree/Commit.
 pub trait FromObject {
     fn from_object<U: AsRef<[u8]>>(content: U) -> Self;
 }
 
+/// Default folder name for database.
+/// Same as "objects" in git.
 const DIR_NAME: &'static str = "objects";
 
+/// Responsible for dealing with database.
 pub struct Database {
     path: path::PathBuf,
 }

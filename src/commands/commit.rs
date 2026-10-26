@@ -2,6 +2,18 @@ use crate::commands::command::*;
 use crate::{database, index, refs, workspace};
 use std::{collections, error, fs, path};
 
+/// Commit command.
+///
+/// ## Usage
+/// ```
+/// Commit::builder()
+///     .message("first commit")
+///     .working_directory(env::current_dir()?)
+///     .author("me", "me123@gmail.com")
+///     .committer("someone", "someone123@gmail.com")
+///     .build()
+///     .execute()?;
+/// ```
 pub struct Commit {
     ws: workspace::Workspace,
     db: database::Database,
@@ -74,6 +86,8 @@ impl CommandBuilder<Commit> for CommitBuilder {
     }
 }
 
+// This is used for ease transitions of files and folders
+// from workspace to index, to database.
 type FileName = String;
 struct RecTree {
     entries: collections::HashMap<FileName, RecEntry>,
