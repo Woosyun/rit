@@ -66,19 +66,3 @@ impl CommandBuilder<Init> for InitBuilder {
         Ok(Init { working_directory })
     }
 }
-
-/*
-impl Init {
-    // responsible getting working directory right
-    pub fn new<P: AsRef<path::Path>>(working_directory: P) -> io::Result<Self> {
-        // compare to `absolute`, `canonicalize` checks symlink and so on,
-        // to make sure the path exists
-        let working_directory = path::Path::canonicalize(working_directory.as_ref())?;
-
-        Ok(Self { working_directory })
-    }
-
-    pub fn run(&self) -> std::io::Result<()> {
-    }
-}
-*/

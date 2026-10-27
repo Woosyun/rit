@@ -1,6 +1,6 @@
 use crate::commands::command::*;
-use crate::{database, index, refs, workspace};
-use std::{collections, error, fs, path};
+use crate::{database, index, refs, repository, workspace};
+use std::{collections, error, fs, io, path};
 
 /// Commit command.
 ///
@@ -64,6 +64,33 @@ pub struct CommitBuilder {
     message: Option<String>,
     author: Option<database::Author>,
     committer: Option<database::Committer>,
+}
+impl CommitBuilder {
+    pub fn working_directory<P: AsRef<path::Path>>(
+        mut self,
+        working_directory: P,
+    ) -> io::Result<Self> {
+        let workdir = working_directory.as_ref();
+        self.ws = Some(workspace::Workspace::new(workdir.to_path_buf())?);
+        let repodir = workdir.join(repository::DIR_NAME);
+        self.db = Some(database::Database::new(repodir.clone()));
+        self.refs = Some(refs::Refs::new(repodir));
+        Ok(self)
+    }
+    pub fn message(mut self, message: &str) -> Self {
+        self.message = Some(message.into());
+        self
+    }
+    pub fn author(mut self, name: &str, email: &str) -> Self {
+        let now = 0;
+        self.author = Some(database::Author::new(name.into(), email.into(), now));
+        self
+    }
+    pub fn committer(mut self, name: &str, email: &str) -> Self {
+        let now = 0;
+        self.committer = Some(database::Committer::new(name.into(), email.into(), now));
+        self
+    }
 }
 impl CommandBuilder<Commit> for CommitBuilder {
     fn new() -> Self {

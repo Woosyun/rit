@@ -23,18 +23,17 @@ pub trait FromObject {
 
 /// Default folder name for database.
 /// Same as "objects" in git.
-const DIR_NAME: &'static str = "objects";
+pub const DIR_NAME: &'static str = "objects";
 
 /// Responsible for dealing with database.
 pub struct Database {
     path: path::PathBuf,
 }
 impl Database {
-    pub fn new<P: AsRef<path::Path>>(repo: P) -> Self {
-        let path = repo.as_ref().join(DIR_NAME);
+    pub fn new<P: AsRef<path::Path>>(repodir: P) -> Self {
+        let path = repodir.as_ref().join(DIR_NAME);
         Self { path }
     }
-
     //todo: split function for testing
     pub fn store(&self, object: impl IntoObject) -> Result<super::Oid, Box<dyn error::Error>> {
         let obj = object.into_object();

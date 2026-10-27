@@ -1,4 +1,3 @@
-//
 // Think about file-existence locking vs os-file-locking
 // and replace this method to OS level file locking method someday
 //
@@ -35,7 +34,7 @@ impl LockFile {
     pub fn load(&mut self) -> io::Result<()> {
         let file = fs::OpenOptions::new()
             .read(true)
-            .write(false)
+            .write(false) // tothink: what happen if write happens?
             .create_new(true)
             .open(&self.path)?;
         self.file = Some(file);
@@ -52,14 +51,6 @@ impl LockFile {
 
         Ok(())
     }
-    /*
-    pub fn write(&mut self, content: &[u8]) -> io::Result<()> {
-        if let Some(f) = &mut self._file {
-            f.write_all(content)?;
-        }
-        Ok(())
-    }
-    */
     pub fn commit(mut self) -> io::Result<()> {
         // For Windows compatibility, drop file before renaming.
         drop(self.file.take());
