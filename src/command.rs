@@ -1,6 +1,6 @@
-use std::error;
+use std::{error, path};
 
-/// ## Example
+/// ### Example
 /// ```
 /// struct Commit {
 ///     commit_message: String,
@@ -20,7 +20,10 @@ pub trait Command<C, B: CommandBuilder<C>> {
     fn execute(self) -> Result<(), Box<dyn error::Error>>;
 }
 
-/// ## Example
+/// ## CommandBuilder
+/// * Responsible for validating given path is right.
+///
+/// ### Example
 /// ```
 /// struct CommitBuilder {
 ///     commit_message: Option<String>,
@@ -41,5 +44,6 @@ pub trait Command<C, B: CommandBuilder<C>> {
 /// ```
 pub trait CommandBuilder<C> {
     fn new() -> Self;
+    fn working_directory<P: AsRef<path::Path>>(self, workdir: P) -> Self;
     fn build(self) -> Result<C, Box<dyn error::Error>>;
 }

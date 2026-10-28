@@ -1,6 +1,6 @@
-use crate::commands::command::*;
+use crate::command::*;
 use crate::{database, index, refs, repository, workspace};
-use std::{collections, error, fs, io, path};
+use std::{collections, error, fs, path};
 
 /// Commit command.
 ///
@@ -27,7 +27,7 @@ impl Command<Commit, CommitBuilder> for Commit {
         CommitBuilder::new()
     }
     fn execute(self) -> Result<(), Box<dyn error::Error>> {
-        let mut index = index::Index::new(&self.ws.path).load_mut()?;
+        let mut index = index::Index::new(&self.ws.path);
 
         for path in self.ws.list_files()? {
             let content = fs::read(&path)?;
@@ -66,17 +66,6 @@ pub struct CommitBuilder {
     committer: Option<database::Committer>,
 }
 impl CommitBuilder {
-    pub fn working_directory<P: AsRef<path::Path>>(
-        mut self,
-        working_directory: P,
-    ) -> io::Result<Self> {
-        let workdir = working_directory.as_ref();
-        self.ws = Some(workspace::Workspace::new(workdir.to_path_buf())?);
-        let repodir = workdir.join(repository::DIR_NAME);
-        self.db = Some(database::Database::new(repodir.clone()));
-        self.refs = Some(refs::Refs::new(repodir));
-        Ok(self)
-    }
     pub fn message(mut self, message: &str) -> Self {
         self.message = Some(message.into());
         self
@@ -97,6 +86,14 @@ impl CommandBuilder<Commit> for CommitBuilder {
         Self {
             ..Default::default()
         }
+    }
+    fn working_directory<P: AsRef<path::Path>>(mut self, working_directory: P) -> Self {
+        let workdir = working_directory.as_ref();
+        self.ws = Some(workspace::Workspace::new(workdir.to_path_buf()));
+        let repodir = workdir.join(repository::DIR_NAME);
+        self.db = Some(database::Database::new(repodir.clone()));
+        self.refs = Some(refs::Refs::new(repodir));
+        self
     }
     fn build(self) -> Result<Commit, Box<dyn error::Error>> {
         let commit = Commit {

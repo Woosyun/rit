@@ -5,28 +5,8 @@ use std::{collections, fs, io, path};
 
 const FILE_NAME: &'static str = "index";
 
-pub struct IndexLoader {
-    path: path::PathBuf,
-}
-impl IndexLoader {
-    fn new<P: AsRef<path::Path>>(path: P) -> Self {
-        Self {
-            path: path.as_ref().to_path_buf(),
-        }
-    }
-    pub fn load(self) -> io::Result<Index> {
-        /*
-                let mut lockfile = lockfile::LockFile::new(self.path);
-                lockfile.load();
-        */
-        Ok(Default::default())
-    }
-    pub fn load_mut(self) -> io::Result<Index> {
-        Ok(Default::default())
-    }
-}
-
-/// `Index` is responsible for dealing with index.
+/// # Index
+/// Responsible for dealing with 'Index'
 #[derive(Default)]
 pub struct Index {
     lockfile: Option<lockfile::LockFile>,
@@ -36,11 +16,16 @@ pub struct Index {
     hash: database::Oid,
 }
 impl Index {
-    pub fn new<P: AsRef<path::Path>>(repo: P) -> IndexLoader {
-        IndexLoader::new(repo.as_ref().join(FILE_NAME))
+    pub fn new<P: AsRef<path::Path>>(repo: P) -> Self {
+        Self {
+            lockfile: None,
+            header: Default::default(),
+            entries: collections::HashMap::new(),
+            hash: Default::default(),
+        }
     }
 
-    //tothink: is AsRef<Path> always equivalent PathBuf
+    //tothink: is AsRef<Path> always equivalent PathBuf?
     pub fn insert(
         &mut self,
         relative_path: path::PathBuf,

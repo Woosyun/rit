@@ -1,16 +1,15 @@
-use std::{error, fs, io, path};
+use std::{error, fs, path};
 
-/// Responsibe for handle workspace.
+/// Responsible for handle workspace.
 /// To read workspace and get file paths, use [`Workspace::list_files`].
 pub struct Workspace {
     pub path: path::PathBuf,
 }
 impl Workspace {
-    //todo: Use design pattern.
-    pub fn new<P: AsRef<path::Path>>(working_dir: P) -> io::Result<Self> {
-        Ok(Self {
-            path: fs::canonicalize(working_dir.as_ref())?,
-        })
+    pub fn new<P: AsRef<path::Path>>(workdir: P) -> Self {
+        Self {
+            path: workdir.as_ref().to_path_buf(),
+        }
     }
 
     /// This method returns vector of paths representing all files in the workspace.
@@ -90,7 +89,6 @@ pub mod tests {
         symlink(workdir.join("a.txt"), workdir.join("a_link")).unwrap();
 
         let real = Workspace::new(workdir)
-            .unwrap()
             .list_files()
             .unwrap()
             .into_iter()

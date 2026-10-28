@@ -1,4 +1,4 @@
-use crate::commands::command::*;
+use crate::command::*;
 use crate::repository;
 use std::{error, fs, io, path};
 
@@ -47,17 +47,15 @@ impl Command<Init, InitBuilder> for Init {
 pub struct InitBuilder {
     working_directory: Option<path::PathBuf>,
 }
-impl InitBuilder {
-    pub fn working_directory<P: AsRef<path::Path>>(mut self, workdir: P) -> Self {
-        self.working_directory = Some(workdir.as_ref().to_path_buf());
-        self
-    }
-}
 impl CommandBuilder<Init> for InitBuilder {
     fn new() -> Self {
         Self {
             working_directory: None,
         }
+    }
+    fn working_directory<P: AsRef<path::Path>>(mut self, workdir: P) -> Self {
+        self.working_directory = Some(workdir.as_ref().to_path_buf());
+        self
     }
     fn build(self) -> Result<Init, Box<dyn error::Error>> {
         let Some(working_directory) = self.working_directory else {
