@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use std::{error, fs, path};
 
 /// Responsible for handle workspace.
@@ -51,10 +52,10 @@ impl Workspace {
     pub fn relative_path<P: AsRef<path::Path>>(
         &self,
         path: P,
-    ) -> Result<path::PathBuf, path::StripPrefixError> {
+    ) -> Result<RelativePath, path::StripPrefixError> {
         let re = path.as_ref().strip_prefix(&self.path)?.to_path_buf();
 
-        Ok(re)
+        Ok(re.into())
     }
 }
 

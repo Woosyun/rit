@@ -1,5 +1,4 @@
-use crate::command::*;
-use crate::{database, index, refs, repository, workspace};
+use crate::prelude::*;
 use std::{collections, error, fs, path};
 
 /// Commit command.
@@ -29,21 +28,35 @@ impl Command<Commit, CommitBuilder> for Commit {
     fn execute(self) -> Result<(), Box<dyn error::Error>> {
         let mut index = index::Index::new(&self.ws.path);
 
-        for path in self.ws.list_files()? {
-            let content = fs::read(&path)?;
-            let blob = database::Blob::new(content);
-            let oid = self.db.store(blob)?;
-            let metadata = fs::metadata(&path)?;
-            let relative_path = self.ws.relative_path(path)?;
+        self.ws
+            .list_files()?
+            .iter()
+            .map(|path| {
+                let content = fs::read(&path)?;
+                let blob = database::Blob::new(content);
+                let oid = self.db.store(blob)?;
+                let metadata = fs::metadata(&path)?;
+                let relative_path = self.ws.relative_path(path)?.into();
 
-            //entries.push((metadata, relative_path, oid));
-            index.insert(relative_path, metadata, oid);
-        }
+                //entries.push((metadata, relative_path, oid));
+                index.insert(relative_path, metadata, oid);
+                Ok(())
+            })
+            .collect::<Result<(), Box<dyn error::Error>>>()?;
 
         let mut rectree = RecTree::new();
         for (relative_path, index_entry) in index.entries().iter() {
             rectree.insert(index_entry.mode(), relative_path, index_entry.oid());
         }
+        /*
+        let mut rectree = index.entries()
+            .iter()
+            .map(|(relative_path, index_entry)| {
+                //todo: fix types to match
+                (index_entry.mode().clone(), relative_path.clone().into(), index_entry.oid().clone())
+            })
+            .collect::<RecTree>();
+        */
         let (_, root_oid, _) = RecEntry::Tree(rectree).store("/".to_string(), &self.db)?;
 
         let parent = self.refs.read_head()?.oid()?.clone();
@@ -169,6 +182,7 @@ impl RecTree {
         db.store(db_tree)
     }
 }
+
 enum RecEntry {
     Tree(RecTree),
     Entry(u32, database::Oid),
