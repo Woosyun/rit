@@ -1,14 +1,24 @@
 ## Blob
-```{BLOB_TYPE} {blob.bytes of original contents}\0{contents}```
+```{type} {bytes of original contents}\0{contents}```
 * Oid is computed from this, before compress
+1. 'BLOB'
+2. Byte size of original content
+3. Content
 
 ## Tree
-1. ```{TREE_TYPE}?{number of entries}?[entries]```
+```{type} {number of entries}\0{entries}```
+1. 'TREE'
+2. Number of entries
+3. Entries
 
 ### Entry
-```{mode: String} {path}\0{oid}```
+```{mode} {file name}\0{oid}```
+1. 6-character mode
+2. file name
+3. 20-byte oid
 
 ## [Index](https://git-scm.com/docs/index-format)
+```{header}{entries}?{extensions}?{hash}```
 1. 12-byte Header
 2. Entries // Sort by file name(String of unsigned bytes) asc, sort by stage asc
 3. Extensions
@@ -22,10 +32,10 @@
     1. ctime seconds, last time file's metadata changed
     2. ctime nanoseconds, fractions
     3. mtime seconds, last time file's content changed
-    4. mtime nanoseconds fractions
+    4. mtime nanoseconds, fractions
     5. dev, id of the HW device the file resides on
     6. ino, number of inode storing its attributes
-    7. mode == permissions
+    7. mode, permissions
         1. 16-bit unused, 00 00
         2. 4-bit object type
         3. 3-bit unused
