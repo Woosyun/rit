@@ -1,31 +1,56 @@
-use crate::{database, lockfile};
-#[allow(unused)]
-use std::io::{Read, Seek, SeekFrom};
-use std::{collections, fs, io, path};
+use super::entry::Entry;
+use crate::prelude::*;
+use std::{collections, fs};
 
 const FILE_NAME: &'static str = "index";
 
 /// # Index
-/// Responsible for dealing with 'Index'
-#[derive(Default)]
 pub struct Index {
-    lockfile: Option<lockfile::LockFile>,
     header: super::Header,
     //todo: use stage
-    entries: collections::HashMap<path::PathBuf, super::Entry>,
+    entries: collections::HashMap<RelativePath, super::Entry>,
     hash: database::Oid,
 }
 impl Index {
-    pub fn new<P: AsRef<path::Path>>(repo: P) -> Self {
+    pub fn entries(&self) -> &collections::HashMap<RelativePath, super::Entry> {
+        &self.entries
+    }
+}
+
+type ToBeEntry = (RelativePath, fs::Metadata, database::Oid);
+impl FromIterator<ToBeEntry> for Index {
+    fn from_iter<I: IntoIterator<Item = ToBeEntry>>(iter: I) -> Self {
+        let m = iter
+            .into_iter()
+            .map(|(relative_path, metadata, oid)| {
+                let file_name = relative_path
+                    .file_name()
+                    .expect("entry should be normal")
+                    .to_str()
+                    .expect("this is valid utf-8(?)")
+                    .to_string();
+
+                (relative_path, Entry::new(metadata, oid, file_name))
+            })
+            .collect::<collections::HashMap<RelativePath, Entry>>();
+
+        Index {
+            header: Default::default(),
+            entries: m,
+            hash: Default::default(), // todo: make it being updated along the iterating.
+        }
+    }
+}
+/*
+impl Index {
+    pub fn new() -> Self {
         Self {
-            lockfile: None,
             header: Default::default(),
             entries: collections::HashMap::new(),
             hash: Default::default(),
         }
     }
 
-    //tothink: is AsRef<Path> always equivalent PathBuf?
     pub fn insert(
         &mut self,
         relative_path: path::PathBuf,
@@ -58,3 +83,4 @@ impl Index {
         todo!("write to file");
     }
 }
+*/

@@ -1,23 +1,41 @@
-// Think about file-existence locking vs os-file-locking
-// and replace this method to OS level file locking method someday
-//
-// File-existence locking
-// pros: true cross platform safety
-// cons: fragile
-//
-// OS-file locking
-// pros: kernel level locking. automatic releasing
-// cons: behaviour depends on OS ( flock on Unix, LockFileEx on Windows)
-//
-// And for releasing locking,
-// use explicit release method, not through drop trait.
-// since drop returns (), it cannot handle errors, including disk error
-//
+//! # File-Write-Locking
+//! Refer git/lockfile.h
+//!
+//! Mutual exclusion, atomic writing.
+//! Reading is not gonna be blocked, if 'rename' is atomic.
+//! When we write file, we create {file name}.lock file first,
+//! write contents into it, rename file name to {file name}.
+//!
+//! With OptionOptions::new().create_new(true), we can notice
+//! when there is somebody already locked.
+//!
+//! Even when process finish before LockFile is renamed,
+//! cleaning up should be garanteed.
+//!
+//! But could drop trait be problematic,
+//! considering drop trait return (),
+//! it cannot handle errors, including disk error?
+//!
+//! ## Compare to OS file locking
+//! ### OS File-Locking
+//! pros: kernel level locking. automatic releasing
+//! cons: behaviour depends on OS ( flock on Unix, LockFileEx on Windows)
+//!
+//! ### File existence locking
+//! pros: true cross platform safety
+//! cons: fragile
 
-use std::{fs, io, path};
+// tothink:
+// can I pass responsibility of actual handling file
+// to something like tempdir?
+
+use std::{error, fs, io, path};
 
 pub struct LockFile {
+    /// Temporary path, "*.lock".
     path: path::PathBuf,
+
+    /// Target file path.
     target_path: path::PathBuf,
     file: Option<fs::File>,
 }
@@ -31,17 +49,7 @@ impl LockFile {
         }
     }
 
-    pub fn load(&mut self) -> io::Result<()> {
-        let file = fs::OpenOptions::new()
-            .read(true)
-            .write(false) // tothink: what happen if write happens?
-            .create_new(true)
-            .open(&self.path)?;
-        self.file = Some(file);
-
-        Ok(())
-    }
-    pub fn load_mut(&mut self) -> io::Result<()> {
+    pub fn hold(&mut self) -> io::Result<()> {
         let file = fs::OpenOptions::new()
             .read(false)
             .write(true)
@@ -51,11 +59,15 @@ impl LockFile {
 
         Ok(())
     }
-    pub fn commit(mut self) -> io::Result<()> {
+    pub fn commit(mut self) -> Result<(), Box<dyn error::Error>> {
+        if self.file.is_none() {
+            return Err("forbidden operation".into());
+        }
+
         // For Windows compatibility, drop file before renaming.
         drop(self.file.take());
 
-        fs::rename(&self.path, &self.target_path)
+        fs::rename(&self.path, &self.target_path).map_err(Into::into)
     }
 }
 
@@ -74,6 +86,7 @@ impl io::Write for LockFile {
         Ok(())
     }
 }
+
 impl io::Read for LockFile {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if let Some(f) = &mut self.file {
@@ -87,20 +100,8 @@ impl io::Read for LockFile {
 impl Drop for LockFile {
     fn drop(&mut self) -> () {
         // todo: handle errors;;
-        let _ = fs::remove_file(&self.path);
+        if self.path.exists() {
+            let _ = fs::remove_file(&self.path);
+        }
     }
 }
-
-/*
-impl std::ops::Deref for LockFile {
-    type Target = Option<fs::File>;
-    fn deref(&self) -> &Self::Target {
-        &self._file
-    }
-}
-impl std::ops::DerefMut for LockFile {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self._file
-    }
-}
-*/

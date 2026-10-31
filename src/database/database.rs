@@ -1,9 +1,6 @@
-use crate::lockfile;
+use crate::{lockfile, zlib};
 use std::{error, fs, path};
 
-use flate2::Compression;
-#[allow(unused)]
-use flate2::{read::ZlibDecoder, write::ZlibEncoder};
 #[allow(unused)]
 use std::io::{Read, Write};
 
@@ -39,16 +36,16 @@ impl Database {
         let obj = object.into_object();
         let oid = super::Oid::new(&obj)?;
 
-        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
-        e.write_all(&obj)?;
-        let compressed = e.finish()?;
+        let compressed = zlib::compress(&obj)?;
 
         let target_dir = self.path.join(oid.dir_name());
-        fs::create_dir(&target_dir)?;
+        if !target_dir.exists() {
+            fs::create_dir(&target_dir)?;
+        }
         let target_path = target_dir.join(oid.file_name());
         //if target is exists, finish
         let mut lf = lockfile::LockFile::new(target_path);
-        lf.load_mut()?;
+        lf.hold()?;
         lf.write(&compressed)?;
 
         Ok(oid)

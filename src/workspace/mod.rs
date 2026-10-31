@@ -15,7 +15,7 @@ impl Workspace {
 
     /// This method returns vector of paths representing all files in the workspace.
     ///
-    /// **Note** Result is returned unsorted
+    /// **Note** Result is not garanteed to be sorted.
     pub fn list_files(&self) -> Result<Vec<path::PathBuf>, Box<dyn error::Error>> {
         let mut hash = vec![];
         self.read_dir(&self.path, &mut hash)?;
@@ -52,10 +52,13 @@ impl Workspace {
     pub fn relative_path<P: AsRef<path::Path>>(
         &self,
         path: P,
-    ) -> Result<RelativePath, path::StripPrefixError> {
+    ) -> Result<RelativePath, Box<dyn error::Error>> {
         let re = path.as_ref().strip_prefix(&self.path)?.to_path_buf();
-
-        Ok(re.into())
+        if re.is_relative() {
+            Ok(RelativePath::new(re))
+        } else {
+            Err("path is not relative path".into())
+        }
     }
 }
 

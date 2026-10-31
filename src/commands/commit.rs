@@ -26,23 +26,21 @@ impl Command<Commit, CommitBuilder> for Commit {
         CommitBuilder::new()
     }
     fn execute(self) -> Result<(), Box<dyn error::Error>> {
-        let mut index = index::Index::new(&self.ws.path);
-
-        self.ws
+        let index = self
+            .ws
             .list_files()?
             .iter()
             .map(|path| {
                 let content = fs::read(&path)?;
+
                 let blob = database::Blob::new(content);
                 let oid = self.db.store(blob)?;
                 let metadata = fs::metadata(&path)?;
-                let relative_path = self.ws.relative_path(path)?.into();
+                let relative_path = self.ws.relative_path(path)?;
 
-                //entries.push((metadata, relative_path, oid));
-                index.insert(relative_path, metadata, oid);
-                Ok(())
+                Ok((relative_path, metadata, oid))
             })
-            .collect::<Result<(), Box<dyn error::Error>>>()?;
+            .collect::<Result<index::Index, Box<dyn error::Error>>>()?;
 
         let mut rectree = RecTree::new();
         for (relative_path, index_entry) in index.entries().iter() {
@@ -65,6 +63,7 @@ impl Command<Commit, CommitBuilder> for Commit {
         let new_head = self.db.store(commit)?;
         //self.refs.update_head(new_head)?;
 
+        todo!("update index");
         Ok(())
     }
 }

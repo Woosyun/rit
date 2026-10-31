@@ -9,7 +9,6 @@ pub struct Entry {
     mtime_nano: u32,
     dev: u32,
     ino: u32,
-    //todo: define mode
     mode: u32,
     uid: u32,
     gid: u32,
@@ -49,10 +48,13 @@ impl Entry {
 /// 1-bit extended flag (must be zero in version 2)
 /// 2-bit stage (used during merge)
 /// 12-bit length of file name, max(0xfff, len(file name))
+#[derive(Default)]
 pub struct Flags(u16);
+/*
 impl Default for Flags {
     fn default() -> Flags {
         let f: u16 = 0b_0000_0000_0000_0000;
         Flags(f)
     }
 }
+*/

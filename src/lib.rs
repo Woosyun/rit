@@ -7,6 +7,7 @@ pub mod refs;
 pub mod relative_path;
 pub mod repository;
 pub mod workspace;
+pub mod zlib;
 
 pub mod prelude {
     pub use super::command::*;
