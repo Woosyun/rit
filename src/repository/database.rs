@@ -1,0 +1,48 @@
+use crate::prelude::*;
+use std::{error, fs, path};
+
+pub struct Database {
+    path: path::PathBuf
+}
+impl Database {
+    pub fn new<P: AsRef<path::Path>>(repodir: P) -> Self {
+        let path = repodir.as_ref().join(DATABASE);
+        Self { path }
+    }
+    pub fn write(&self, object: impl Into<Object>) -> Result<ObjectId, Box<dyn error::Error>> {
+        let obj: Object = object.into();
+        let oid: ObjectId = sha1::hash(obj.as_slice());
+
+        let compressed = zlib::compress(&obj)?;
+
+        let dir_name = oid.iter().take(2).collect();
+        let dir = self.path.join(dir_name);
+        if !dir.exists() {
+            fs::create_dir(&dir)?;
+        }
+        let file_name = oid.iter().skip(2).collect();
+        let target = dir.join(file_name);
+        //if target is exists, finish. Return what?
+        let mut lf = LockFile::new(target);
+        lf.hold()?;
+        lf.write(&compressed)?;
+
+        Ok(oid)
+    }
+    /*
+    pub fn retrieve(&self, oid: oid::Oid) -> Result<impl IntoObject, Box<dyn error::Error>> {
+        let target_path = self.path.join(oid.dir_name()).join(oid.file_name());
+        let compressed = fs::read(target_path)?;
+
+        let mut decompressed: Vec<u8> = Vec::new();
+        let mut decoder = ZlibDecoder::new(&decompressed[..]);
+        decoder.read_to_end(&mut compressed)?;
+
+        let object_type = decompressed
+
+        //todo: read type, size, content
+
+        Ok()
+    }
+    */
+}

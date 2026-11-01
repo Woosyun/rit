@@ -1,23 +1,20 @@
-use super::entry::Entry;
 use crate::prelude::*;
-use std::{collections, fs};
-
-const FILE_NAME: &'static str = "index";
+use std::{collections, fs, os::unix::fs::MetadataExt};
 
 /// # Index
 pub struct Index {
-    header: super::Header,
+    header: Header,
     //todo: use stage
-    entries: collections::HashMap<RelativePath, super::Entry>,
-    hash: database::Oid,
+    entries: collections::HashMap<RelativePath, Entry>,
+    hash: ObjectId,
 }
 impl Index {
-    pub fn entries(&self) -> &collections::HashMap<RelativePath, super::Entry> {
+    pub fn entries(&self) -> &collections::HashMap<RelativePath, Entry> {
         &self.entries
     }
 }
 
-type ToBeEntry = (RelativePath, fs::Metadata, database::Oid);
+type ToBeEntry = (RelativePath, fs::Metadata, ObjectId);
 impl FromIterator<ToBeEntry> for Index {
     fn from_iter<I: IntoIterator<Item = ToBeEntry>>(iter: I) -> Self {
         let m = iter
@@ -81,6 +78,78 @@ impl Index {
             return Err(io::Error::from(io::ErrorKind::PermissionDenied));
         };
         todo!("write to file");
+    }
+}
+*/
+
+struct Header {
+    signature: [char; 4],
+    version: u32,
+    number_of_entries: u32,
+}
+impl Default for Header {
+    fn default() -> Self {
+        Self {
+            signature: ['D', 'I', 'R', 'C'],
+            version: 2,
+            number_of_entries: 0,
+        }
+    }
+}
+
+struct Entry {
+    ctime: u32,
+    ctime_nano: u32,
+    mtime: u32,
+    mtime_nano: u32,
+    dev: u32,
+    ino: u32,
+    mode: u32,
+    uid: u32,
+    gid: u32,
+    file_size: u32,
+    oid: ObjectId,
+    flags: Flags,
+    //(optional?) extened_flags: u16,
+    file_name: String,
+}
+impl Entry {
+    fn new(stat: fs::Metadata, oid: ObjectId, file_name: String) -> Self {
+        Self {
+            ctime: stat.ctime() as u32,
+            ctime_nano: stat.ctime_nsec() as u32,
+            mtime: stat.mtime() as u32,
+            mtime_nano: stat.mtime_nsec() as u32,
+            dev: stat.dev() as u32,
+            ino: stat.ino() as u32,
+            mode: stat.mode() as u32,
+            uid: stat.uid() as u32,
+            gid: stat.gid() as u32,
+            file_size: stat.size() as u32,
+            oid,
+            flags: Default::default(),
+            file_name,
+        }
+    }
+    pub fn mode(&self) -> &u32 {
+        &self.mode
+    }
+    pub fn oid(&self) -> &ObjectId {
+        &self.oid
+    }
+}
+
+/// 1-bit assume-valid flag
+/// 1-bit extended flag (must be zero in version 2)
+/// 2-bit stage (used during merge)
+/// 12-bit length of file name, max(0xfff, len(file name))
+#[derive(Default)]
+struct Flags(u16);
+/*
+impl Default for Flags {
+    fn default() -> Flags {
+        let f: u16 = 0b_0000_0000_0000_0000;
+        Flags(f)
     }
 }
 */

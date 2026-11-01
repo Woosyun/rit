@@ -1,16 +1,18 @@
+use crate::prelude::*;
+
 pub const EXECUTABLE_FILE_MODE: Mode = 0o100755;
 pub const READONLY_FILE_MODE: Mode = 0o100644;
 pub const DIRECTORY_MODE: Mode = 0o040000;
 
 /// Mode would be stored as 6-bytes
 type Mode = u32;
-type Oid = super::Oid;
 type EntryName = String;
-pub type Entry = (Mode, Oid, EntryName);
+pub type Entry = (Mode, ObjectId, EntryName);
 
 pub struct Tree {
     entries: Vec<Entry>,
 }
+/*
 impl Tree {
     /*
     pub fn new() -> Self {
@@ -27,7 +29,9 @@ impl Tree {
     }
     */
 }
+*/
 
+/*
 impl super::IntoObject for Tree {
     fn into_object(self) -> Vec<u8> {
         //sort
@@ -50,3 +54,4 @@ impl super::IntoObject for Tree {
             .concat()
     }
 }
+*/

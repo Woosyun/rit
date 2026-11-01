@@ -1,21 +1,35 @@
-pub mod command;
+// module for commands
 pub mod commands;
-pub mod database;
+
+// core data
 pub mod index;
-pub mod lockfile;
-pub mod refs;
-pub mod relative_path;
+pub mod object;
+
+// frontend?
 pub mod repository;
 pub mod workspace;
+
+// utility stuff
+pub mod command;
+pub mod lockfile;
+pub mod relative_path;
+pub mod sha1;
 pub mod zlib;
 
+// prelude for dev
 pub mod prelude {
+    //1
+    pub use super::index::*;
+    pub use super::object::*;
+
+    //2
+    pub use super::repository::*;
+    pub use super::workspace::*;
+
+    //3
     pub use super::command::*;
-    pub use super::commands::*;
-    pub use super::database;
-    pub use super::index;
-    pub use super::refs;
+    pub use super::lockfile::*;
     pub use super::relative_path::*;
-    pub use super::repository;
-    pub use super::workspace;
+    pub use super::sha1;
+    pub use super::zlib;
 }

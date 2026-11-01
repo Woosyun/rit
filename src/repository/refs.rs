@@ -1,12 +1,4 @@
-use crate::{database, lockfile, repository};
-use std::io::Write;
-use std::{error, io, path};
-
-/// Name for "refs" folder consisted of branches.
-pub const DIR_NAME: &'static str = "refs";
-
-/// File name for "HEAD" file, representing current Head ref.
-pub const HEAD_FILE_NAME: &'static str = "HEAD";
+use std::path;
 
 /// Responsible for handling refs, including head, branches, remotes.
 pub struct Refs {
@@ -20,6 +12,7 @@ impl Refs {
         }
     }
 
+    /*
     pub fn read_head(&self) -> io::Result<Ref> {
         let tmp = Ref::Oid(Default::default());
         Ok(tmp)
@@ -43,8 +36,10 @@ impl Refs {
         let mut target_ref = self.read_head()?;
         Ok(())
     }
+    */
 }
 
+/*
 pub enum Ref {
     Oid(database::Oid),
     SymRef(String),
@@ -67,3 +62,4 @@ impl From<String> for Ref {
         Ref::SymRef(symref)
     }
 }
+*/

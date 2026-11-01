@@ -1,14 +1,16 @@
+use crate::prelude::*;
+
 pub struct Commit {
-    tree: super::Oid,
-    parent: super::Oid,
+    tree: ObjectId,
+    parent: ObjectId,
     author: Author,
     committer: Committer,
     message: String,
 }
 impl Commit {
     pub fn new(
-        root_oid: super::Oid,
-        parent: super::Oid,
+        root_oid: ObjectId,
+        parent: ObjectId,
         author: Author,
         committer: Committer,
         message: String,
@@ -40,6 +42,7 @@ impl Author {
     }
 }
 
+/*
 impl super::IntoObject for Commit {
     fn into_object(self) -> Vec<u8> {
         let tree = [format!("tree ").into_bytes(), self.tree.0.to_vec()].concat();
@@ -63,3 +66,4 @@ impl super::IntoObject for Commit {
         .concat()
     }
 }
+*/
