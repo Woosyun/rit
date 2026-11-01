@@ -1,6 +1,5 @@
 use flate2::Compression;
-#[allow(unused)]
-use flate2::{read::ZlibDecoder, write::ZlibEncoder};
+use flate2::write::ZlibEncoder;
 use std::error;
 use std::io::Write;
 

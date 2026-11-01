@@ -32,7 +32,7 @@ impl From<Tree> for Object {
                 [
                     format!("{mode} ").into_bytes(),
                     format!("{name}\0").into_bytes(),
-                    oid.0.to_vec(),
+                    oid.to_vec(),
                 ]
                 .concat()
             })

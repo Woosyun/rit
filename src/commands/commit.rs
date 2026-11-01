@@ -42,8 +42,8 @@ impl Command<Commit, CommitBuilder> for Commit {
             .collect::<Result<index::Index, Box<dyn error::Error>>>()?;
 
         let mut rectree = RecTree::new();
-        for (relative_path, index_entry) in index.entries().iter() {
-            rectree.insert(index_entry.mode(), relative_path, index_entry.oid());
+        for index_entry in index.entries() {
+            rectree.insert(index_entry.mode(), index_entry.name(), index_entry.oid());
         }
         /*
         let mut rectree = index.entries()

@@ -11,7 +11,7 @@ impl Database {
     }
     pub fn store(&self, object: impl Into<Object>) -> Result<ObjectId, Box<dyn error::Error>> {
         let obj: Object = object.into();
-        let oid: ObjectId = hash(obj.as_slice());
+        let oid: [u8; 20] = hash(obj.as_slice());
 
         let compressed = compress(&obj)?;
 

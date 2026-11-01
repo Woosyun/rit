@@ -23,17 +23,14 @@ impl ops::Deref for Object {
         &self.0
     }
 }
+pub type ObjectId = [u8; 20];
 
+/*
 #[derive(Clone, Default)]
-pub struct ObjectId([u8; 20]);
+pub struct ObjectId(pub [u8; 20]);
 impl ObjectId {
     pub fn new(oid: [u8; 20]) -> Self {
         Self(oid)
     }
 }
-impl ops::Deref for ObjectId {
-    type Target = [u8; 20];
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+*/

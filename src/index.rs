@@ -1,18 +1,176 @@
-use crate::object::ObjectId;
-use crate::relative_path::RelativePath;
-use std::{collections, fs, os::unix::fs::MetadataExt};
+use crate::prelude::*;
+use std::fs::File;
+use std::io::{Cursor, Read};
+use std::{fs, io, os::unix::fs::MetadataExt, path};
 
 /// # Index
 pub struct Index {
     header: IndexHeader,
     //todo: use stage
-    entries: collections::HashMap<RelativePath, IndexEntry>,
+    entries: Vec<IndexEntry>,
+    extensions: Vec<IndexExtension>,
     checksum: [u8; 20],
 }
 impl Index {
-    pub fn entries(&self) -> &collections::HashMap<RelativePath, IndexEntry> {
+    pub fn entries(&self) -> &Vec<IndexEntry> {
         &self.entries
     }
+    pub fn read_from_file<P: AsRef<path::Path>>(path: P) -> io::Result<Self> {
+        let mut file = File::open(path)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        Self::parse(&buf)
+    }
+    pub fn parse(bytes: &[u8]) -> io::Result<Self> {
+        if bytes.len() < 32 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "Too short to be Index",
+            ));
+        }
+
+        // checksum
+        let content_len = bytes.len() - 20;
+        let expected_checksum = &bytes[content_len..];
+        let calculated_checksum = hash(&bytes[..content_len]);
+        if expected_checksum != &calculated_checksum {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "SHA-1 checksum is invalid",
+            ));
+        }
+
+        let mut cursor = Cursor::new(&bytes[..content_len]);
+
+        // Signature
+        let mut signature = [0u8; 4];
+        cursor.read_exact(&mut signature)?;
+        if signature != DIRC_SIGNATURE {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid DIRC signature",
+            ));
+        }
+
+        // Header
+        let version = read_u32(&mut cursor)?;
+        if !(2..=4).contains(&version) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid index version",
+            ));
+        }
+
+        // number of entries
+        let number_of_entries = read_u32(&mut cursor)?;
+        // entries
+        let mut entries = Vec::with_capacity(number_of_entries as usize);
+        for _ in 0..number_of_entries {
+            let entry_start = cursor.position();
+
+            let ctime_sec = read_u32(&mut cursor)?;
+            let ctime_nsec = read_u32(&mut cursor)?;
+            let mtime_sec = read_u32(&mut cursor)?;
+            let mtime_nsec = read_u32(&mut cursor)?;
+            let dev = read_u32(&mut cursor)?;
+            let ino = read_u32(&mut cursor)?;
+            let mode = read_u32(&mut cursor)?;
+            let uid = read_u32(&mut cursor)?;
+            let gid = read_u32(&mut cursor)?;
+            let file_size = read_u32(&mut cursor)?;
+
+            let mut checksum = [0u8; 20];
+            cursor.read_exact(&mut checksum)?;
+
+            let flags = read_u16(&mut cursor)?;
+            let is_extended = (flags & 0x4000) != 0;
+            let extended_flags = if version >= 3 && is_extended {
+                Some(read_u16(&mut cursor)?)
+            } else {
+                None
+            };
+
+            let mut name_bytes = Vec::new();
+            let mut b = [0u8; 1];
+            loop {
+                cursor.read_exact(&mut b)?;
+                if b[0] == 0 {
+                    break;
+                }
+                name_bytes.push(b[0]);
+            }
+            let name = String::from_utf8(name_bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            let relative_path = RelativePath::new(path::PathBuf::from(name));
+
+            let entry_len = cursor.position() - entry_start;
+            let pad_len = (8 - (entry_len % 8)) % 8;
+            if pad_len > 0 {
+                let mut padding = vec![0u8; pad_len as usize];
+                cursor.read_exact(&mut padding)?;
+            }
+
+            let index_entry = IndexEntry::new(
+                ctime_sec,
+                ctime_nsec,
+                mtime_sec,
+                mtime_nsec,
+                dev,
+                ino,
+                mode,
+                uid,
+                gid,
+                file_size,
+                checksum,
+                flags,
+                extended_flags,
+                relative_path,
+            );
+
+            entries.push(index_entry);
+        }
+
+        //optional extensions
+        let mut extensions = Vec::new();
+        while (cursor.position() as usize) < content_len {
+            let mut ext_sig = [0u8; 4];
+            cursor.read_exact(&mut ext_sig)?;
+            let ext_size = read_u32(&mut cursor)? as usize;
+
+            let mut ext_data = vec![0u8; ext_size];
+            cursor.read_exact(&mut ext_data)?;
+
+            extensions.push(IndexExtension {
+                signature: ext_sig,
+                data: ext_data,
+            });
+        }
+
+        let mut checksum = [0u8; 20];
+        checksum.copy_from_slice(expected_checksum);
+
+        Ok(Index {
+            header: IndexHeader {
+                signature: Default::default(),
+                version,
+                number_of_entries,
+            },
+            entries,
+            extensions,
+            checksum,
+        })
+    }
+}
+
+fn read_u32<R: Read>(r: &mut R) -> io::Result<u32> {
+    let mut buf = [0u8; 4];
+    r.read_exact(&mut buf)?;
+    Ok(u32::from_be_bytes(buf))
+}
+fn read_u16<R: Read>(r: &mut R) -> io::Result<u16> {
+    let mut buf = [0u8; 2];
+    r.read_exact(&mut buf)?;
+    Ok(u16::from_be_bytes(buf))
 }
 
 type ToBeEntry = (RelativePath, fs::Metadata, ObjectId);
@@ -20,35 +178,33 @@ impl FromIterator<ToBeEntry> for Index {
     fn from_iter<I: IntoIterator<Item = ToBeEntry>>(iter: I) -> Self {
         let m = iter
             .into_iter()
-            .map(|(relative_path, metadata, oid)| {
-                let file_name = relative_path
-                    .file_name()
-                    .expect("entry should be normal")
-                    .to_str()
-                    .expect("this is valid utf-8(?)")
-                    .to_string();
-
-                (relative_path, IndexEntry::from(metadata, oid, file_name))
-            })
-            .collect::<collections::HashMap<RelativePath, IndexEntry>>();
+            .map(|(relative_path, metadata, oid)| IndexEntry::from(metadata, oid, relative_path))
+            .collect::<Vec<IndexEntry>>();
 
         Index {
             header: Default::default(),
             entries: m,
+            extensions: vec![],
             checksum: Default::default(), // todo: make it being updated along the iterating.
         }
     }
 }
 
+pub struct IndexExtension {
+    pub signature: [u8; 4],
+    pub data: Vec<u8>,
+}
+
+const DIRC_SIGNATURE: [u8; 4] = ['D' as u8, 'I' as u8, 'R' as u8, 'C' as u8];
 pub struct IndexHeader {
-    signature: [char; 4],
+    signature: [u8; 4],
     version: u32,
     number_of_entries: u32,
 }
 impl Default for IndexHeader {
     fn default() -> Self {
         Self {
-            signature: ['D', 'I', 'R', 'C'],
+            signature: DIRC_SIGNATURE,
             version: 2,
             number_of_entries: 0,
         }
@@ -66,13 +222,46 @@ pub struct IndexEntry {
     uid: u32,
     gid: u32,
     file_size: u32,
-    oid: ObjectId,
-    flags: Flags,
-    //(optional?) extened_flags: u16,
-    file_name: String,
+    oid: [u8; 20],
+    flags: u16,
+    extended_flags: Option<u16>,
+    relative_path: RelativePath,
 }
 impl IndexEntry {
-    fn from(stat: fs::Metadata, oid: ObjectId, file_name: String) -> Self {
+    fn new(
+        ctime: u32,
+        ctime_nano: u32,
+        mtime: u32,
+        mtime_nano: u32,
+        dev: u32,
+        ino: u32,
+        mode: u32,
+        uid: u32,
+        gid: u32,
+        file_size: u32,
+        oid: [u8; 20],
+        flags: u16,
+        extended_flags: Option<u16>,
+        relative_path: RelativePath,
+    ) -> Self {
+        Self {
+            ctime,
+            ctime_nano,
+            mtime,
+            mtime_nano,
+            dev,
+            ino,
+            mode,
+            uid,
+            gid,
+            file_size,
+            oid,
+            flags,
+            extended_flags,
+            relative_path,
+        }
+    }
+    fn from(stat: fs::Metadata, oid: [u8; 20], relative_path: RelativePath) -> Self {
         Self {
             ctime: stat.ctime() as u32,
             ctime_nano: stat.ctime_nsec() as u32,
@@ -86,14 +275,18 @@ impl IndexEntry {
             file_size: stat.size() as u32,
             oid,
             flags: Default::default(),
-            file_name,
+            extended_flags: None,
+            relative_path,
         }
     }
     pub fn mode(&self) -> &u32 {
         &self.mode
     }
-    pub fn oid(&self) -> &ObjectId {
+    pub fn oid(&self) -> &[u8; 20] {
         &self.oid
+    }
+    pub fn name(&self) -> &RelativePath {
+        &self.relative_path
     }
 }
 
@@ -101,13 +294,6 @@ impl IndexEntry {
 /// 1-bit extended flag (must be zero in version 2)
 /// 2-bit stage (used during merge)
 /// 12-bit length of file name, max(0xfff, len(file name))
+#[allow(unused)]
 #[derive(Default)]
 struct Flags(u16);
-/*
-impl Default for Flags {
-    fn default() -> Flags {
-        let f: u16 = 0b_0000_0000_0000_0000;
-        Flags(f)
-    }
-}
-*/
