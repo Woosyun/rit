@@ -1,4 +1,10 @@
-use std::path;
+use crate::prelude::*;
+use std::{io, path};
+
+enum Ref {
+    Oid(ObjectId),
+    Sym(String),
+}
 
 /// Responsible for handling refs, including head, branches, remotes.
 pub struct Refs {
@@ -12,11 +18,11 @@ impl Refs {
         }
     }
 
-    /*
     pub fn read_head(&self) -> io::Result<Ref> {
         let tmp = Ref::Oid(Default::default());
         Ok(tmp)
     }
+    /*
     fn update_head_with_oid(&self, oid: database::Oid) -> Result<(), Box<dyn error::Error>> {
         //store as string(hex if oid)
         let target_path = self.path.join(HEAD_FILE_NAME);

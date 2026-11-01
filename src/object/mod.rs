@@ -11,6 +11,11 @@ use std::ops;
 
 /// Object represents Blob/Tree/Commit.
 pub struct Object(Vec<u8>);
+impl Object {
+    pub fn new(content: Vec<u8>) -> Self {
+        Self(content)
+    }
+}
 impl ops::Deref for Object {
     type Target = Vec<u8>;
 

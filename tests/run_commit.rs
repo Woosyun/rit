@@ -1,3 +1,4 @@
+use rit::commands::*;
 use rit::prelude::*;
 use std::{error, fs};
 use tempdir::TempDir;

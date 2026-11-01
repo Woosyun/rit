@@ -1,26 +1,34 @@
 use crate::prelude::*;
+use std::io::Write;
 use std::{error, fs, path};
 
 pub struct Database {
-    path: path::PathBuf
+    path: path::PathBuf,
 }
 impl Database {
-    pub fn new<P: AsRef<path::Path>>(repodir: P) -> Self {
-        let path = repodir.as_ref().join(DATABASE);
+    pub fn new(path: path::PathBuf) -> Self {
         Self { path }
     }
-    pub fn write(&self, object: impl Into<Object>) -> Result<ObjectId, Box<dyn error::Error>> {
+    pub fn store(&self, object: impl Into<Object>) -> Result<ObjectId, Box<dyn error::Error>> {
         let obj: Object = object.into();
-        let oid: ObjectId = sha1::hash(obj.as_slice());
+        let oid: ObjectId = hash(obj.as_slice());
 
-        let compressed = zlib::compress(&obj)?;
+        let compressed = compress(&obj)?;
 
-        let dir_name = oid.iter().take(2).collect();
+        let dir_name: String = oid
+            .iter()
+            .take(2)
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>();
         let dir = self.path.join(dir_name);
         if !dir.exists() {
             fs::create_dir(&dir)?;
         }
-        let file_name = oid.iter().skip(2).collect();
+        let file_name = oid
+            .iter()
+            .skip(2)
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>();
         let target = dir.join(file_name);
         //if target is exists, finish. Return what?
         let mut lf = LockFile::new(target);

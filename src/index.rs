@@ -1,15 +1,16 @@
-use crate::prelude::*;
+use crate::object::ObjectId;
+use crate::relative_path::RelativePath;
 use std::{collections, fs, os::unix::fs::MetadataExt};
 
 /// # Index
 pub struct Index {
-    header: Header,
+    header: IndexHeader,
     //todo: use stage
-    entries: collections::HashMap<RelativePath, Entry>,
-    hash: ObjectId,
+    entries: collections::HashMap<RelativePath, IndexEntry>,
+    checksum: [u8; 20],
 }
 impl Index {
-    pub fn entries(&self) -> &collections::HashMap<RelativePath, Entry> {
+    pub fn entries(&self) -> &collections::HashMap<RelativePath, IndexEntry> {
         &self.entries
     }
 }
@@ -27,67 +28,24 @@ impl FromIterator<ToBeEntry> for Index {
                     .expect("this is valid utf-8(?)")
                     .to_string();
 
-                (relative_path, Entry::new(metadata, oid, file_name))
+                (relative_path, IndexEntry::from(metadata, oid, file_name))
             })
-            .collect::<collections::HashMap<RelativePath, Entry>>();
+            .collect::<collections::HashMap<RelativePath, IndexEntry>>();
 
         Index {
             header: Default::default(),
             entries: m,
-            hash: Default::default(), // todo: make it being updated along the iterating.
+            checksum: Default::default(), // todo: make it being updated along the iterating.
         }
     }
 }
-/*
-impl Index {
-    pub fn new() -> Self {
-        Self {
-            header: Default::default(),
-            entries: collections::HashMap::new(),
-            hash: Default::default(),
-        }
-    }
 
-    pub fn insert(
-        &mut self,
-        relative_path: path::PathBuf,
-        metadata: fs::Metadata,
-        oid: database::Oid,
-    ) {
-        let filename = if let Some(osstr) = relative_path.file_name() {
-            if let Some(str) = osstr.to_str() {
-                str.to_string()
-            } else {
-                //tothink: are these allowable behaviour?
-                return;
-            }
-        } else {
-            return;
-        };
-        let entry = super::Entry::new(metadata, oid, filename);
-        let _ = self.entries.insert(relative_path, entry);
-    }
-
-    pub fn entries(&self) -> &collections::HashMap<path::PathBuf, super::Entry> {
-        &self.entries
-    }
-
-    pub fn commit(self) -> io::Result<()> {
-        //currently, every request fall into error
-        let Some(_lockfile) = self.lockfile else {
-            return Err(io::Error::from(io::ErrorKind::PermissionDenied));
-        };
-        todo!("write to file");
-    }
-}
-*/
-
-struct Header {
+pub struct IndexHeader {
     signature: [char; 4],
     version: u32,
     number_of_entries: u32,
 }
-impl Default for Header {
+impl Default for IndexHeader {
     fn default() -> Self {
         Self {
             signature: ['D', 'I', 'R', 'C'],
@@ -97,7 +55,7 @@ impl Default for Header {
     }
 }
 
-struct Entry {
+pub struct IndexEntry {
     ctime: u32,
     ctime_nano: u32,
     mtime: u32,
@@ -113,8 +71,8 @@ struct Entry {
     //(optional?) extened_flags: u16,
     file_name: String,
 }
-impl Entry {
-    fn new(stat: fs::Metadata, oid: ObjectId, file_name: String) -> Self {
+impl IndexEntry {
+    fn from(stat: fs::Metadata, oid: ObjectId, file_name: String) -> Self {
         Self {
             ctime: stat.ctime() as u32,
             ctime_nano: stat.ctime_nsec() as u32,

@@ -1,3 +1,5 @@
+use super::Object;
+
 pub const BLOB_TYPE: &'static str = "blob";
 
 pub struct Blob(Vec<u8>);
@@ -11,11 +13,10 @@ impl Blob {
     }
 }
 
-/*
-impl IntoObject for Blob {
-    fn into_object(self) -> Vec<u8> {
-        let header = format!("{} {}\0", BLOB_TYPE, self.0.len()).into_bytes();
-        [header, self.0].concat()
+impl From<Blob> for Object {
+    fn from(blob: Blob) -> Object {
+        let header = format!("{} {}\0", BLOB_TYPE, blob.0.len()).into_bytes();
+        let content = [header, blob.0].concat();
+        Object::new(content)
     }
 }
-*/

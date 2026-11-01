@@ -1,5 +1,4 @@
-use crate::command::*;
-use crate::repository;
+use crate::prelude::*;
 use std::{error, fs, io, path};
 
 /// A Command for initializing repository.
@@ -13,16 +12,14 @@ use std::{error, fs, io, path};
 /// ```
 ///
 pub struct Init {
-    working_directory: path::PathBuf,
+    repository: Repository,
 }
 impl Command<Init, InitBuilder> for Init {
     fn builder() -> InitBuilder {
         InitBuilder::new()
     }
     fn execute(self) -> Result<(), Box<dyn error::Error>> {
-        let repository_directory = self.working_directory.join(repository::DIR_NAME);
-
-        match fs::create_dir(&repository_directory) {
+        match fs::create_dir(&self.repository.repodir) {
             Ok(_) => (),
             Err(error) => match error.kind() {
                 io::ErrorKind::AlreadyExists => {
@@ -34,8 +31,8 @@ impl Command<Init, InitBuilder> for Init {
             },
         }
 
-        for sub_dir in ["objects"] {
-            let target_path = repository_directory.join(sub_dir);
+        for sub_dir in ["objects", "refs"] {
+            let target_path = self.repository.repodir.join(sub_dir);
             fs::create_dir(target_path)?
         }
 
@@ -61,6 +58,7 @@ impl CommandBuilder<Init> for InitBuilder {
         let Some(working_directory) = self.working_directory else {
             return Err("no working_directory".into());
         };
-        Ok(Init { working_directory })
+        let repository = Repository::build(working_directory)?;
+        Ok(Init { repository })
     }
 }

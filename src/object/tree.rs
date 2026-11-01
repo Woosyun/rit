@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use super::{Object, ObjectId};
 
 pub const EXECUTABLE_FILE_MODE: Mode = 0o100755;
 pub const READONLY_FILE_MODE: Mode = 0o100644;
@@ -12,35 +12,21 @@ pub type Entry = (Mode, ObjectId, EntryName);
 pub struct Tree {
     entries: Vec<Entry>,
 }
-/*
 impl Tree {
-    /*
-    pub fn new() -> Self {
-        Tree { entries: vec![] }
-    }
-    */
-    pub fn from(entries: Vec<Entry>) -> Self {
+    pub fn new(entries: Vec<Entry>) -> Self {
         Tree { entries }
     }
-
-    /*
-    pub fn insert(&mut self, entry: Entry) {
-        self.entries.push(entry);
-    }
-    */
 }
-*/
 
-/*
-impl super::IntoObject for Tree {
-    fn into_object(self) -> Vec<u8> {
+impl From<Tree> for Object {
+    fn from(tree: Tree) -> Object {
         //sort
-        let mut entries = self.entries;
+        let mut entries = tree.entries;
         entries.sort_by(|from, to| from.2.cmp(&to.2));
 
         //SPACE, NULL(\0)?
         //todo: add oid for tree
-        entries
+        let content = entries
             .into_iter()
             .map(|(mode, oid, name)| {
                 [
@@ -51,7 +37,7 @@ impl super::IntoObject for Tree {
                 .concat()
             })
             .collect::<Vec<Vec<u8>>>()
-            .concat()
+            .concat();
+        Object::new(content)
     }
 }
-*/

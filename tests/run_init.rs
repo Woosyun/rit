@@ -1,3 +1,4 @@
+use rit::commands::Init;
 use rit::prelude::*;
 use std::error;
 use tempdir::TempDir;
@@ -10,10 +11,10 @@ pub fn init_succeed_on_empty_directory() -> Result<(), Box<dyn error::Error>> {
         .build()?
         .execute()?;
 
-    let repodir = tempdir.path().join(repository::DIR_NAME);
+    let repodir = tempdir.path().join(repository::REPOSITORY);
     assert!(repodir.exists());
-    assert!(repodir.join(database::DIR_NAME).exists());
-    assert!(repodir.join(refs::DIR_NAME).exists());
+    assert!(repodir.join(repository::DATABASE).exists());
+    assert!(repodir.join(repository::REFS).exists());
 
     Ok(())
 }

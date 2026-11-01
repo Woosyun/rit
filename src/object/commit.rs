@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use super::ObjectId;
 
 pub struct Commit {
     tree: ObjectId,

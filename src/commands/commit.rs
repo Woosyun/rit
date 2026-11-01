@@ -14,12 +14,10 @@ use std::{collections, error, fs, path};
 ///     .execute()?;
 /// ```
 pub struct Commit {
-    ws: workspace::Workspace,
-    db: database::Database,
-    refs: refs::Refs,
+    repository: Repository,
     message: String,
-    author: database::Author,
-    committer: database::Committer,
+    author: object::Author,
+    committer: object::Committer,
 }
 impl Command<Commit, CommitBuilder> for Commit {
     fn builder() -> CommitBuilder {
@@ -27,16 +25,17 @@ impl Command<Commit, CommitBuilder> for Commit {
     }
     fn execute(self) -> Result<(), Box<dyn error::Error>> {
         let index = self
-            .ws
+            .repository
+            .workspace
             .list_files()?
             .iter()
             .map(|path| {
                 let content = fs::read(&path)?;
 
-                let blob = database::Blob::new(content);
-                let oid = self.db.store(blob)?;
+                let blob = object::Blob::new(content);
+                let oid = self.repository.database.store(blob)?;
                 let metadata = fs::metadata(&path)?;
-                let relative_path = self.ws.relative_path(path)?;
+                let relative_path = self.repository.workspace.relative_path(path)?;
 
                 Ok((relative_path, metadata, oid))
             })
@@ -55,12 +54,14 @@ impl Command<Commit, CommitBuilder> for Commit {
             })
             .collect::<RecTree>();
         */
-        let (_, root_oid, _) = RecEntry::Tree(rectree).store("/".to_string(), &self.db)?;
+        let (_, root_oid, _) = RecEntry::Tree(rectree).store("/".to_string(), &self.repository)?;
 
-        let parent = self.refs.read_head()?.oid()?.clone();
+        /*
+        let parent = self.repository.refs.read_head()?.oid()?.clone();
         let commit =
-            database::Commit::new(root_oid, parent, self.author, self.committer, self.message);
+            Commit::new(root_oid, parent, self.author, self.committer, self.message);
         let new_head = self.db.store(commit)?;
+        */
         //self.refs.update_head(new_head)?;
 
         todo!("update index");
@@ -70,12 +71,10 @@ impl Command<Commit, CommitBuilder> for Commit {
 
 #[derive(Default)]
 pub struct CommitBuilder {
-    ws: Option<workspace::Workspace>,
-    db: Option<database::Database>,
-    refs: Option<refs::Refs>,
+    workdir: Option<path::PathBuf>,
     message: Option<String>,
-    author: Option<database::Author>,
-    committer: Option<database::Committer>,
+    author: Option<object::Author>,
+    committer: Option<object::Committer>,
 }
 impl CommitBuilder {
     pub fn message(mut self, message: &str) -> Self {
@@ -84,12 +83,12 @@ impl CommitBuilder {
     }
     pub fn author(mut self, name: &str, email: &str) -> Self {
         let now = 0;
-        self.author = Some(database::Author::new(name.into(), email.into(), now));
+        self.author = Some(object::Author::new(name.into(), email.into(), now));
         self
     }
     pub fn committer(mut self, name: &str, email: &str) -> Self {
         let now = 0;
-        self.committer = Some(database::Committer::new(name.into(), email.into(), now));
+        self.committer = Some(object::Committer::new(name.into(), email.into(), now));
         self
     }
 }
@@ -100,18 +99,17 @@ impl CommandBuilder<Commit> for CommitBuilder {
         }
     }
     fn working_directory<P: AsRef<path::Path>>(mut self, working_directory: P) -> Self {
-        let workdir = working_directory.as_ref();
-        self.ws = Some(workspace::Workspace::new(workdir.to_path_buf()));
-        let repodir = workdir.join(repository::DIR_NAME);
-        self.db = Some(database::Database::new(repodir.clone()));
-        self.refs = Some(refs::Refs::new(repodir));
+        let workdir = working_directory.as_ref().to_path_buf();
+        self.workdir = Some(workdir);
         self
     }
     fn build(self) -> Result<Commit, Box<dyn error::Error>> {
+        let Some(workdir) = self.workdir else {
+            return Err("no working directory set".into());
+        };
+        let repository = Repository::build(workdir)?;
         let commit = Commit {
-            ws: self.ws.ok_or_else(|| "no workspace found".to_string())?,
-            db: self.db.ok_or_else(|| "no database found".to_string())?,
-            refs: self.refs.ok_or_else(|| "no refs found".to_string())?,
+            repository,
             message: self.message.ok_or_else(|| "no message found".to_string())?,
             author: self.author.ok_or_else(|| "no author found".to_string())?,
             committer: self
@@ -134,7 +132,7 @@ impl RecTree {
             entries: collections::HashMap::new(),
         }
     }
-    fn insert(&mut self, mode: &u32, relative_path: &path::Path, oid: &database::Oid) {
+    fn insert(&mut self, mode: &u32, relative_path: &path::Path, oid: &ObjectId) {
         let mut paths = relative_path.components();
         let Some(path::Component::Normal(entry_name)) = paths.next() else {
             return;
@@ -144,13 +142,7 @@ impl RecTree {
         };
         self.add(paths, entry_name, mode.clone(), oid.clone());
     }
-    fn add(
-        &mut self,
-        mut paths: path::Components,
-        entry_name: &str,
-        mode: u32,
-        oid: database::Oid,
-    ) {
+    fn add(&mut self, mut paths: path::Components, entry_name: &str, mode: u32, oid: ObjectId) {
         if let Some(path::Component::Normal(next_entry_name)) = paths.next() {
             let Some(next_entry_name) = next_entry_name.to_str() else {
                 return;
@@ -171,31 +163,31 @@ impl RecTree {
     //database::Tree로 바꿔서 저장하고 database::Oid를 리턴
     //rectree and recentry should not have responsibility
     //of storing object in database
-    fn store(self, db: &database::Database) -> Result<database::Oid, Box<dyn error::Error>> {
+    fn store(self, repo: &Repository) -> Result<ObjectId, Box<dyn error::Error>> {
         let db_entries = self
             .entries
             .into_iter()
-            .map(|(filename, recentry)| recentry.store(filename, db))
-            .collect::<Result<Vec<_>, Box<dyn error::Error>>>()?;
-        let db_tree = database::Tree::from(db_entries);
-        db.store(db_tree)
+            .map(|(filename, recentry)| recentry.store(filename, repo))
+            .collect::<Result<Vec<object::Entry>, Box<dyn error::Error>>>()?;
+        let db_tree = object::Tree::new(db_entries);
+        repo.database.store(db_tree)
     }
 }
 
 enum RecEntry {
     Tree(RecTree),
-    Entry(u32, database::Oid),
+    Entry(u32, ObjectId),
 }
 impl RecEntry {
     fn store(
         self,
         filename: String,
-        db: &database::Database,
-    ) -> Result<database::Entry, Box<dyn error::Error>> {
+        db: &Repository,
+    ) -> Result<object::Entry, Box<dyn error::Error>> {
         let entry = match self {
             RecEntry::Tree(rectree) => {
                 let oid = rectree.store(db)?;
-                (database::DIRECTORY_MODE, oid, filename)
+                (DIRECTORY_MODE, oid, filename)
             }
             RecEntry::Entry(mode, oid) => (mode, oid, filename).into(),
         };
