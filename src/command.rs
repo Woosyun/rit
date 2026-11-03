@@ -1,4 +1,4 @@
-use std::{error, path};
+use std::{error, io, path};
 
 /// ### Example
 /// ```
@@ -34,7 +34,7 @@ pub trait Command<C, B: CommandBuilder<C>> {
 ///             commit_message: None,
 ///         }
 ///     }
-///     fn build(self) -> Result<Commit, Box<dyn std::error::Error>> {
+///     fn build(self) -> io::Result<Commit> {
 ///         let Some(commit_message) = self.commit_message else {
 ///             return Err("Commit needs commit message. Message Not Found".into());
 ///         };
@@ -45,5 +45,5 @@ pub trait Command<C, B: CommandBuilder<C>> {
 pub trait CommandBuilder<C> {
     fn new() -> Self;
     fn working_directory<P: AsRef<path::Path>>(self, workdir: P) -> Self;
-    fn build(self) -> Result<C, Box<dyn error::Error>>;
+    fn build(self) -> io::Result<C>;
 }

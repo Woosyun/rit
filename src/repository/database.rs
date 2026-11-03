@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use std::io::Write;
-use std::{error, fs, path};
+use std::{error, fs, io, path};
 
 pub struct Database {
     path: path::PathBuf,
@@ -9,7 +9,7 @@ impl Database {
     pub fn new(path: path::PathBuf) -> Self {
         Self { path }
     }
-    pub fn store(&self, object: impl Into<Object>) -> Result<ObjectId, Box<dyn error::Error>> {
+    pub fn store(&self, object: impl Into<Object>) -> io::Result<ObjectId> {
         let obj: Object = object.into();
         let oid: [u8; 20] = hash(obj.as_slice());
 

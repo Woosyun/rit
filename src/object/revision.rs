@@ -1,13 +1,13 @@
 use super::ObjectId;
 
-pub struct Commit {
+pub struct Revision {
     tree: ObjectId,
     parent: ObjectId,
     author: Author,
     committer: Committer,
     message: String,
 }
-impl Commit {
+impl Revision {
     pub fn new(
         root_oid: ObjectId,
         parent: ObjectId,

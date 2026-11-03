@@ -11,10 +11,10 @@ pub fn init_succeed_on_empty_directory() -> Result<(), Box<dyn error::Error>> {
         .build()?
         .execute()?;
 
-    let repodir = tempdir.path().join(repository::REPOSITORY);
+    let repodir = tempdir.path().join(REPOSITORY);
     assert!(repodir.exists());
-    assert!(repodir.join(repository::DATABASE).exists());
-    assert!(repodir.join(repository::REFS).exists());
+    assert!(repodir.join(DATABASE).exists());
+    assert!(repodir.join(REFS).exists());
 
     Ok(())
 }

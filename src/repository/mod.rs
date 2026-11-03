@@ -17,8 +17,8 @@ pub const REFS: &'static str = "refs";
 pub const INDEX: &'static str = "index";
 pub const HEAD: &'static str = "HEAD";
 
-use crate::index;
-use std::{error, path};
+use crate::prelude::*;
+use std::{fs, io, path};
 
 //tothink:
 //Index is only one representing actual data.
@@ -29,17 +29,17 @@ pub struct Repository {
     pub repodir: path::PathBuf,
     pub workspace: Workspace,
     pub database: Database,
-    pub index: index::Index,
+    pub index: Index,
     pub refs: Refs,
 }
 impl Repository {
-    pub fn build<P: AsRef<path::Path>>(workdir: P) -> Result<Self, Box<dyn error::Error>> {
+    pub fn build<P: AsRef<path::Path>>(workdir: P) -> io::Result<Self> {
         let workdir = workdir.as_ref().to_path_buf();
 
         let repodir = workdir.join(REPOSITORY);
         let workspace = Workspace::new(&workdir);
         let database = Database::new(repodir.join(DATABASE));
-        let index = todo!("load index");
+        let index = load_index(repodir.join(INDEX))?;
         let refs = Refs::new(repodir.join(REFS));
 
         let repo = Self {
@@ -51,4 +51,9 @@ impl Repository {
         };
         Ok(repo)
     }
+}
+
+fn load_index<P: AsRef<path::Path>>(path: P) -> io::Result<Index> {
+    let index_raw = fs::read(path)?;
+    Index::parse(&index_raw)
 }

@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::{collections, error, fs, path};
+use std::{collections, error, fs, io, path};
 
 /// Commit command.
 ///
@@ -16,14 +16,15 @@ use std::{collections, error, fs, path};
 pub struct Commit {
     repository: Repository,
     message: String,
-    author: object::Author,
-    committer: object::Committer,
+    author: Author,
+    committer: Committer,
 }
 impl Command<Commit, CommitBuilder> for Commit {
     fn builder() -> CommitBuilder {
         CommitBuilder::new()
     }
     fn execute(self) -> Result<(), Box<dyn error::Error>> {
+        //create index from workspace
         let index = self
             .repository
             .workspace
@@ -32,34 +33,26 @@ impl Command<Commit, CommitBuilder> for Commit {
             .map(|path| {
                 let content = fs::read(&path)?;
 
-                let blob = object::Blob::new(content);
+                let blob = Blob::new(content);
                 let oid = self.repository.database.store(blob)?;
                 let metadata = fs::metadata(&path)?;
                 let relative_path = self.repository.workspace.relative_path(path)?;
 
                 Ok((relative_path, metadata, oid))
             })
-            .collect::<Result<index::Index, Box<dyn error::Error>>>()?;
+            .collect::<Result<Index, Box<dyn error::Error>>>()?;
 
+        //create tree from index
         let mut rectree = RecTree::new();
         for index_entry in index.entries() {
             rectree.insert(index_entry.mode(), index_entry.name(), index_entry.oid());
         }
-        /*
-        let mut rectree = index.entries()
-            .iter()
-            .map(|(relative_path, index_entry)| {
-                //todo: fix types to match
-                (index_entry.mode().clone(), relative_path.clone().into(), index_entry.oid().clone())
-            })
-            .collect::<RecTree>();
-        */
         let (_, root_oid, _) = RecEntry::Tree(rectree).store("/".to_string(), &self.repository)?;
 
         /*
         let parent = self.repository.refs.read_head()?.oid()?.clone();
         let commit =
-            Commit::new(root_oid, parent, self.author, self.committer, self.message);
+            object::Commit::new(root_oid, parent, self.author, self.committer, self.message);
         let new_head = self.db.store(commit)?;
         */
         //self.refs.update_head(new_head)?;
@@ -73,8 +66,8 @@ impl Command<Commit, CommitBuilder> for Commit {
 pub struct CommitBuilder {
     workdir: Option<path::PathBuf>,
     message: Option<String>,
-    author: Option<object::Author>,
-    committer: Option<object::Committer>,
+    author: Option<Author>,
+    committer: Option<Committer>,
 }
 impl CommitBuilder {
     pub fn message(mut self, message: &str) -> Self {
@@ -83,12 +76,12 @@ impl CommitBuilder {
     }
     pub fn author(mut self, name: &str, email: &str) -> Self {
         let now = 0;
-        self.author = Some(object::Author::new(name.into(), email.into(), now));
+        self.author = Some(Author::new(name.into(), email.into(), now));
         self
     }
     pub fn committer(mut self, name: &str, email: &str) -> Self {
         let now = 0;
-        self.committer = Some(object::Committer::new(name.into(), email.into(), now));
+        self.committer = Some(Committer::new(name.into(), email.into(), now));
         self
     }
 }
@@ -103,18 +96,25 @@ impl CommandBuilder<Commit> for CommitBuilder {
         self.workdir = Some(workdir);
         self
     }
-    fn build(self) -> Result<Commit, Box<dyn error::Error>> {
+    fn build(self) -> io::Result<Commit> {
         let Some(workdir) = self.workdir else {
-            return Err("no working directory set".into());
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "cannot find working directory",
+            ));
         };
         let repository = Repository::build(workdir)?;
         let commit = Commit {
             repository,
-            message: self.message.ok_or_else(|| "no message found".to_string())?,
-            author: self.author.ok_or_else(|| "no author found".to_string())?,
-            committer: self
-                .committer
-                .ok_or_else(|| "no committer found".to_string())?,
+            message: self
+                .message
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "commit message missing"))?,
+            author: self.author.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::NotFound, "author information missing")
+            })?,
+            committer: self.committer.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::NotFound, "committer information missing")
+            })?,
         };
         Ok(commit)
     }
@@ -168,9 +168,9 @@ impl RecTree {
             .entries
             .into_iter()
             .map(|(filename, recentry)| recentry.store(filename, repo))
-            .collect::<Result<Vec<object::Entry>, Box<dyn error::Error>>>()?;
-        let db_tree = object::Tree::new(db_entries);
-        repo.database.store(db_tree)
+            .collect::<Result<Vec<TreeEntry>, Box<dyn error::Error>>>()?;
+        let db_tree = Tree::new(db_entries);
+        repo.database.store(db_tree).map_err(Into::into)
     }
 }
 
@@ -179,11 +179,7 @@ enum RecEntry {
     Entry(u32, ObjectId),
 }
 impl RecEntry {
-    fn store(
-        self,
-        filename: String,
-        db: &Repository,
-    ) -> Result<object::Entry, Box<dyn error::Error>> {
+    fn store(self, filename: String, db: &Repository) -> Result<TreeEntry, Box<dyn error::Error>> {
         let entry = match self {
             RecEntry::Tree(rectree) => {
                 let oid = rectree.store(db)?;

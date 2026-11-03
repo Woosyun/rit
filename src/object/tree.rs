@@ -7,13 +7,13 @@ pub const DIRECTORY_MODE: Mode = 0o040000;
 /// Mode would be stored as 6-bytes
 type Mode = u32;
 type EntryName = String;
-pub type Entry = (Mode, ObjectId, EntryName);
+pub type TreeEntry = (Mode, ObjectId, EntryName);
 
 pub struct Tree {
-    entries: Vec<Entry>,
+    entries: Vec<TreeEntry>,
 }
 impl Tree {
-    pub fn new(entries: Vec<Entry>) -> Self {
+    pub fn new(entries: Vec<TreeEntry>) -> Self {
         Tree { entries }
     }
 }
@@ -25,7 +25,6 @@ impl From<Tree> for Object {
         entries.sort_by(|from, to| from.2.cmp(&to.2));
 
         //SPACE, NULL(\0)?
-        //todo: add oid for tree
         let content = entries
             .into_iter()
             .map(|(mode, oid, name)| {

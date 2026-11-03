@@ -54,9 +54,12 @@ impl CommandBuilder<Init> for InitBuilder {
         self.working_directory = Some(workdir.as_ref().to_path_buf());
         self
     }
-    fn build(self) -> Result<Init, Box<dyn error::Error>> {
+    fn build(self) -> io::Result<Init> {
         let Some(working_directory) = self.working_directory else {
-            return Err("no working_directory".into());
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "Working directory not found",
+            ));
         };
         let repository = Repository::build(working_directory)?;
         Ok(Init { repository })
