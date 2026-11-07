@@ -5,8 +5,8 @@
 pub mod database;
 use database::*;
 
-pub mod refs;
-use refs::*;
+pub mod references;
+use references::*;
 
 pub mod workspace;
 use workspace::*;
@@ -18,6 +18,7 @@ pub const INDEX: &'static str = "index";
 pub const HEAD: &'static str = "HEAD";
 
 use crate::prelude::*;
+use std::io::Read;
 use std::{fs, io, path};
 
 //tothink:
@@ -29,7 +30,7 @@ pub struct Repository {
     pub path: path::PathBuf,
     pub workspace: Workspace,
     pub database: Database,
-    pub refs: Refs,
+    pub references: References,
 }
 impl Repository {
     pub fn build<P: AsRef<path::Path>>(workdir: P) -> io::Result<Self> {
@@ -38,18 +39,33 @@ impl Repository {
         let path = workdir.join(REPOSITORY);
         let workspace = Workspace::build(&workdir)?;
         let database = Database::new(path.join(DATABASE));
-        let refs = Refs::new(path.join(REFS));
+        let references = References::new(path.join(REFS));
 
         let repo = Self {
             path,
             workspace,
             database,
-            refs,
+            references,
         };
         Ok(repo)
     }
 
-    pub fn index_path(&self) -> path::PathBuf {
-        self.path.join(INDEX)
+    pub fn load_index(&self) -> io::Result<Index> {
+        let mut file = fs::File::open(self.path.join(INDEX))?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        Index::parse(&buf)
+    }
+
+    // Temporal reading head operation.
+    // todo: Fix this to refer recursive ref
+    pub fn read_head(&self) -> io::Result<RelativePath> {
+        let curr_head = RelativePath::build(HEAD)?;
+        let head = if let Reference::Sym(relative_path) = self.references.read(&curr_head)? {
+            relative_path
+        } else {
+            curr_head
+        };
+        Ok(head)
     }
 }

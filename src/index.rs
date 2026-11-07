@@ -1,7 +1,7 @@
 use crate::prelude::*;
-use std::fs::File;
 use std::io::{Cursor, Read};
-use std::{fs, io, os::unix::fs::MetadataExt, path};
+use std::os::unix::fs::MetadataExt;
+use std::{fs, io, path};
 
 /// # Index
 #[derive(Default)]
@@ -20,16 +20,8 @@ impl Index {
     pub fn entries(&self) -> &Vec<IndexEntry> {
         &self.entries
     }
-    pub fn read_from_file<P: AsRef<path::Path>>(path: P) -> io::Result<Self> {
-        let mut file = File::open(path)?;
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-        Self::parse(&buf)
-    }
-    pub fn read_from_repository(repo: &Repository) -> io::Result<Self> {
-        let path = repo.index_path();
-
-        Self::read_from_file(path)
+    pub fn entries_inner(self) -> Vec<IndexEntry> {
+        self.entries
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
         if bytes.len() < 32 {
@@ -111,7 +103,7 @@ impl Index {
             }
             let relative_path = String::from_utf8(name_bytes)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{:?}", e)))?;
-            let relative_path = relative_path.into();
+            let relative_path = path::PathBuf::from(relative_path).try_into()?;
 
             let entry_len = cursor.position() - entry_start;
             let pad_len = (8 - (entry_len % 8)) % 8;
@@ -354,8 +346,3 @@ impl From<Index> for Object {
     }
 }
 */
-
-fn read_index<P: AsRef<path::Path>>(path: P) -> io::Result<Index> {
-    let index_raw = fs::read(path)?;
-    Index::parse(&index_raw)
-}

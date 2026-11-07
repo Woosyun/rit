@@ -57,7 +57,7 @@ impl Workspace {
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{:?}", e)))?
             .to_path_buf();
 
-        Ok(RelativePath::new(path))
+        RelativePath::build(path)
     }
 }
 

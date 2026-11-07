@@ -116,14 +116,17 @@ impl Command {
             self.committer,
             self.message,
         );
-        //let commit_oid = self.repository.database.store(commit.into())?;
+        let commit_oid = self.repository.database.store(commit.into())?;
 
         // update head
-        //self.repository.refs.update_head(commit_oid)?;
+        let head = self.repository.read_head()?;
+        self.repository.references.write(head, commit_oid)?;
 
         Ok(())
     }
 
+    // This method stores Tree,
+    // creates TreeEntry with ObjectId returned.
     fn store_tree(&self, name: String, index_to_tree: IndexToTree) -> io::Result<TreeEntry> {
         let curr = match index_to_tree {
             IndexToTree::Tree(m) => {
@@ -142,11 +145,6 @@ impl Command {
     }
 }
 
-// IndexEntry = (fs::Metadata, ObjectId, RelativePath)
-// ??
-// Tree = Vec<TreeEntry>
-// TreeEntry = (Mode, ObjectId, String)
-
 enum IndexToTree {
     Tree(collections::HashMap<String, IndexToTree>),
     Entry(TreeEntry),
@@ -155,6 +153,10 @@ impl IndexToTree {
     fn new() -> Self {
         Self::Tree(Default::default())
     }
+
+    // This method receives IndexEntry,
+    // creates TreeEntry from it,
+    // call 'insert_recursively' method to store it.
     fn insert(&mut self, index_entry: IndexEntry) -> io::Result<()> {
         let mode = index_entry.mode;
         let oid = index_entry.oid;
@@ -178,6 +180,9 @@ impl IndexToTree {
 
         Ok(())
     }
+
+    // This method recieves TreeEntry,
+    // stores it going through IndexToTree recursively.
     fn insert_recursively(
         &mut self,
         mut parents: collections::VecDeque<String>,
@@ -185,7 +190,7 @@ impl IndexToTree {
     ) {
         if let IndexToTree::Tree(m) = self {
             if parents.len() == 0 {
-                //todo: optimize of dealing with
+                //todo: optimize dealing with name of entry.
                 m.insert(tree_entry.2.clone(), IndexToTree::Entry(tree_entry));
             } else {
                 let parent = parents.pop_front().unwrap();
