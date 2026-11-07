@@ -1,18 +1,12 @@
-use std::{error, ops, path};
+use std::{ops, path};
 
-#[derive(Eq, PartialEq, Hash)]
 pub struct RelativePath(path::PathBuf);
 impl RelativePath {
     pub fn new(path: path::PathBuf) -> Self {
         Self(path)
     }
-    pub fn build(path: path::PathBuf) -> Result<Self, Box<dyn error::Error>> {
-        if !path.is_relative() {
-            return Err("path parameter is not relative".into());
-        }
-        Ok(Self(path))
-    }
 }
+
 impl ops::Deref for RelativePath {
     type Target = path::PathBuf;
     fn deref(&self) -> &Self::Target {
@@ -20,15 +14,8 @@ impl ops::Deref for RelativePath {
     }
 }
 
-/*
-impl From<path::PathBuf> for RelativePath {
-    fn from(item: path::PathBuf) -> Self {
-        Self(item)
+impl From<String> for RelativePath {
+    fn from(str: String) -> Self {
+        Self::new(str.into())
     }
 }
-impl From<RelativePath> for path::PathBuf {
-    fn from(item: RelativePath) -> path::PathBuf {
-        item.0
-    }
-}
-*/

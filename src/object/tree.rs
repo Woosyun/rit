@@ -6,8 +6,7 @@ pub const DIRECTORY_MODE: Mode = 0o040000;
 
 /// Mode would be stored as 6-bytes
 type Mode = u32;
-type EntryName = String;
-pub type TreeEntry = (Mode, ObjectId, EntryName);
+pub type TreeEntry = (Mode, ObjectId, String);
 
 pub struct Tree {
     entries: Vec<TreeEntry>,
@@ -25,7 +24,7 @@ impl From<Tree> for Object {
         entries.sort_by(|from, to| from.2.cmp(&to.2));
 
         //SPACE, NULL(\0)?
-        let content = entries
+        entries
             .into_iter()
             .map(|(mode, oid, name)| {
                 [
@@ -36,7 +35,6 @@ impl From<Tree> for Object {
                 .concat()
             })
             .collect::<Vec<Vec<u8>>>()
-            .concat();
-        Object::new(content)
+            .concat()
     }
 }

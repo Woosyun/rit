@@ -3,13 +3,13 @@
 //! and representing file/directory name for them.
 
 pub mod database;
-pub use database::*;
-
-pub mod workspace;
-pub use workspace::*;
+use database::*;
 
 pub mod refs;
-pub use refs::*;
+use refs::*;
+
+pub mod workspace;
+use workspace::*;
 
 pub const REPOSITORY: &'static str = ".rit";
 pub const DATABASE: &'static str = "objects";
@@ -26,34 +26,30 @@ use std::{fs, io, path};
 //Now, how are you gonna setup interfaces?
 
 pub struct Repository {
-    pub repodir: path::PathBuf,
+    pub path: path::PathBuf,
     pub workspace: Workspace,
     pub database: Database,
-    pub index: Index,
     pub refs: Refs,
 }
 impl Repository {
     pub fn build<P: AsRef<path::Path>>(workdir: P) -> io::Result<Self> {
         let workdir = workdir.as_ref().to_path_buf();
 
-        let repodir = workdir.join(REPOSITORY);
-        let workspace = Workspace::new(&workdir);
-        let database = Database::new(repodir.join(DATABASE));
-        let index = load_index(repodir.join(INDEX))?;
-        let refs = Refs::new(repodir.join(REFS));
+        let path = workdir.join(REPOSITORY);
+        let workspace = Workspace::build(&workdir)?;
+        let database = Database::new(path.join(DATABASE));
+        let refs = Refs::new(path.join(REFS));
 
         let repo = Self {
-            repodir,
+            path,
             workspace,
             database,
-            index,
             refs,
         };
         Ok(repo)
     }
-}
 
-fn load_index<P: AsRef<path::Path>>(path: P) -> io::Result<Index> {
-    let index_raw = fs::read(path)?;
-    Index::parse(&index_raw)
+    pub fn index_path(&self) -> path::PathBuf {
+        self.path.join(INDEX)
+    }
 }

@@ -4,14 +4,19 @@ use std::io::{Cursor, Read};
 use std::{fs, io, os::unix::fs::MetadataExt, path};
 
 /// # Index
+#[derive(Default)]
 pub struct Index {
     header: IndexHeader,
     //todo: use stage
-    entries: Vec<IndexEntry>,
+    pub entries: Vec<IndexEntry>,
     extensions: Vec<IndexExtension>,
     checksum: [u8; 20],
 }
 impl Index {
+    pub fn insert(&mut self, entry: IndexEntry) {
+        self.entries.push(entry);
+        //update checksum
+    }
     pub fn entries(&self) -> &Vec<IndexEntry> {
         &self.entries
     }
@@ -20,6 +25,11 @@ impl Index {
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
         Self::parse(&buf)
+    }
+    pub fn read_from_repository(repo: &Repository) -> io::Result<Self> {
+        let path = repo.index_path();
+
+        Self::read_from_file(path)
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
         if bytes.len() < 32 {
@@ -99,9 +109,9 @@ impl Index {
                 }
                 name_bytes.push(b[0]);
             }
-            let name = String::from_utf8(name_bytes)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-            let relative_path = RelativePath::new(path::PathBuf::from(name));
+            let relative_path = String::from_utf8(name_bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{:?}", e)))?;
+            let relative_path = relative_path.into();
 
             let entry_len = cursor.position() - entry_start;
             let pad_len = (8 - (entry_len % 8)) % 8;
@@ -173,6 +183,8 @@ fn read_u16<R: Read>(r: &mut R) -> io::Result<u16> {
     Ok(u16::from_be_bytes(buf))
 }
 
+// This look weird.
+// todo: fix or erase this.
 type ToBeEntry = (RelativePath, fs::Metadata, ObjectId);
 impl FromIterator<ToBeEntry> for Index {
     fn from_iter<I: IntoIterator<Item = ToBeEntry>>(iter: I) -> Self {
@@ -188,11 +200,6 @@ impl FromIterator<ToBeEntry> for Index {
             checksum: Default::default(), // todo: make it being updated along the iterating.
         }
     }
-}
-
-pub struct IndexExtension {
-    pub signature: [u8; 4],
-    pub data: Vec<u8>,
 }
 
 const DIRC_SIGNATURE: [u8; 4] = ['D' as u8, 'I' as u8, 'R' as u8, 'C' as u8];
@@ -211,6 +218,11 @@ impl Default for IndexHeader {
     }
 }
 
+pub struct IndexExtension {
+    pub signature: [u8; 4],
+    pub data: Vec<u8>,
+}
+
 pub struct IndexEntry {
     ctime: u32,
     ctime_nano: u32,
@@ -218,14 +230,14 @@ pub struct IndexEntry {
     mtime_nano: u32,
     dev: u32,
     ino: u32,
-    mode: u32,
+    pub mode: u32,
     uid: u32,
     gid: u32,
     file_size: u32,
-    oid: [u8; 20],
+    pub oid: [u8; 20],
     flags: u16,
     extended_flags: Option<u16>,
-    relative_path: RelativePath,
+    pub relative_path: RelativePath,
 }
 impl IndexEntry {
     fn new(
@@ -285,8 +297,40 @@ impl IndexEntry {
     pub fn oid(&self) -> &[u8; 20] {
         &self.oid
     }
-    pub fn name(&self) -> &RelativePath {
+    pub fn path(&self) -> &RelativePath {
         &self.relative_path
+    }
+}
+impl From<IndexEntry> for Vec<u8> {
+    fn from(entry: IndexEntry) -> Self {
+        let ten_bytes = [
+            entry.ctime,
+            entry.ctime_nano,
+            entry.mtime,
+            entry.mtime_nano,
+            entry.dev,
+            entry.ino,
+            entry.mode,
+            entry.uid,
+            entry.gid,
+            entry.file_size,
+        ]
+        .into_iter()
+        .map(|u| u.to_be_bytes())
+        .collect::<Vec<[u8; 4]>>()
+        .concat();
+        //todo: consider extended flags,
+        [
+            ten_bytes,
+            entry.flags.to_be_bytes().to_vec(),
+            //todo: how to handle error of pathbuf?
+            entry
+                .relative_path
+                .to_string_lossy()
+                .into_owned()
+                .into_bytes(),
+        ]
+        .concat()
     }
 }
 
@@ -297,3 +341,21 @@ impl IndexEntry {
 #[allow(unused)]
 #[derive(Default)]
 struct Flags(u16);
+
+/*
+impl From<Index> for Object {
+    fn from(index: Index) -> Object {
+        [
+            index.header.into(),
+            index.entries.into(),
+            index.extensions.into(),
+            index.checksum,
+        ].concat()
+    }
+}
+*/
+
+fn read_index<P: AsRef<path::Path>>(path: P) -> io::Result<Index> {
+    let index_raw = fs::read(path)?;
+    Index::parse(&index_raw)
+}

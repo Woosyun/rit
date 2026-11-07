@@ -9,8 +9,8 @@ impl Database {
     pub fn new(path: path::PathBuf) -> Self {
         Self { path }
     }
-    pub fn store(&self, object: impl Into<Object>) -> io::Result<ObjectId> {
-        let obj: Object = object.into();
+    pub fn store(&self, obj: Object) -> io::Result<ObjectId> {
+        //let obj: Object = object.into();
         let oid: [u8; 20] = hash(obj.as_slice());
 
         let compressed = compress(&obj)?;

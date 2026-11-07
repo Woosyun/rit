@@ -1,13 +1,13 @@
-use super::ObjectId;
+use super::{Object, ObjectId};
 
-pub struct Revision {
+pub struct Commit {
     tree: ObjectId,
     parent: ObjectId,
     author: Author,
     committer: Committer,
     message: String,
 }
-impl Revision {
+impl Commit {
     pub fn new(
         root_oid: ObjectId,
         parent: ObjectId,
@@ -42,28 +42,25 @@ impl Author {
     }
 }
 
-/*
-impl super::IntoObject for Commit {
-    fn into_object(self) -> Vec<u8> {
-        let tree = [format!("tree ").into_bytes(), self.tree.0.to_vec()].concat();
-        let author = format!(
-            "{} <#{}> #{}",
-            self.author.name, self.author.email, self.author.timestamp
-        )
-        .into_bytes();
+impl From<Commit> for Object {
+    fn from(revision: Commit) -> Object {
+        let tree = [format!("tree ").into_bytes(), revision.tree.to_vec()].concat();
+        let author = revision.author;
+        let author =
+            format!("{} <#{}> #{}", author.name, author.email, author.timestamp).into_bytes();
+        let committer = revision.committer;
         let committer = format!(
             "{} <#{}> #{}",
-            self.committer.name, self.committer.email, self.committer.timestamp
+            committer.name, committer.email, committer.timestamp
         )
         .into_bytes();
         [
             tree,
-            self.parent.0.to_vec(),
+            revision.parent.to_vec(),
             author,
             committer,
-            self.message.as_bytes().to_vec(),
+            revision.message.as_bytes().to_vec(),
         ]
         .concat()
     }
 }
-*/

@@ -1,5 +1,4 @@
-use rit::commands::*;
-use rit::prelude::*;
+use rit::{commit, init};
 use std::{error, fs};
 use tempdir::TempDir;
 
@@ -8,7 +7,7 @@ use tempdir::TempDir;
 fn commit_without_repository_initialized() -> () {
     let tempdir =
         TempDir::new("commit_on_empty_working_directory").expect("TempDir should be created");
-    Commit::builder()
+    commit::Builder::new()
         .working_directory(tempdir.path())
         .message("no-commit")
         .author("me", "me123@abc.com")
@@ -23,7 +22,7 @@ fn commit_without_repository_initialized() -> () {
 fn commit_once() -> Result<(), Box<dyn error::Error>> {
     let tempdir = TempDir::new("commit_on_empty_working_directory")?;
 
-    Init::builder()
+    init::Builder::new()
         .working_directory(tempdir.path())
         .build()?
         .execute()?;
@@ -32,7 +31,7 @@ fn commit_once() -> Result<(), Box<dyn error::Error>> {
     fs::create_dir(tempdir.path().join("b"))?;
     fs::write(tempdir.path().join("b/c.txt"), "c")?;
 
-    Commit::builder()
+    commit::Builder::new()
         .working_directory(tempdir.path())
         .message("no-commit")
         .author("me", "me123@abc.com")

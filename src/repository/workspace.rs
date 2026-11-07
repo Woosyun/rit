@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::{error, fs, path};
+use std::{error, fs, io, path};
 
 /// Responsible for handle workspace.
 /// To read workspace and get file paths, use [`Workspace::list_files`].
@@ -7,10 +7,10 @@ pub struct Workspace {
     pub path: path::PathBuf,
 }
 impl Workspace {
-    pub fn new<P: AsRef<path::Path>>(workdir: P) -> Self {
-        Self {
-            path: workdir.as_ref().to_path_buf(),
-        }
+    pub fn build<P: AsRef<path::Path>>(workdir: P) -> io::Result<Self> {
+        let path = fs::canonicalize(workdir.as_ref())?;
+        let ws = Self { path };
+        Ok(ws)
     }
 
     /// This method returns vector of paths representing all files in the workspace.
@@ -49,16 +49,15 @@ impl Workspace {
     }
 
     /// this method returns relative path from working directory.
-    pub fn relative_path<P: AsRef<path::Path>>(
-        &self,
-        path: P,
-    ) -> Result<RelativePath, Box<dyn error::Error>> {
-        let re = path.as_ref().strip_prefix(&self.path)?.to_path_buf();
-        if re.is_relative() {
-            Ok(RelativePath::new(re))
-        } else {
-            Err("path is not relative path".into())
-        }
+    pub fn relative_path<P: AsRef<path::Path>>(&self, path: P) -> io::Result<RelativePath> {
+        let path = path
+            .as_ref()
+            .canonicalize()?
+            .strip_prefix(&self.path)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{:?}", e)))?
+            .to_path_buf();
+
+        Ok(RelativePath::new(path))
     }
 }
 
@@ -92,7 +91,8 @@ pub mod tests {
         //add symlink which is not valid entry
         symlink(workdir.join("a.txt"), workdir.join("a_link")).unwrap();
 
-        let real = Workspace::new(workdir)
+        let real = Workspace::build(workdir)
+            .expect("Given path should be valid")
             .list_files()
             .unwrap()
             .into_iter()
