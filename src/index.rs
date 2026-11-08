@@ -209,10 +209,25 @@ impl Default for IndexHeader {
         }
     }
 }
+impl From<IndexHeader> for Object {
+    fn from(header: IndexHeader) -> Self {
+        [
+            header.signature.to_vec(),
+            header.version.to_be_bytes().to_vec(),
+            header.number_of_entries.to_be_bytes().to_vec(),
+        ]
+        .concat()
+    }
+}
 
 pub struct IndexExtension {
     pub signature: [u8; 4],
     pub data: Vec<u8>,
+}
+impl From<IndexExtension> for Object {
+    fn from(ext: IndexExtension) -> Self {
+        [ext.signature.to_vec(), ext.data].concat()
+    }
 }
 
 pub struct IndexEntry {
@@ -227,6 +242,11 @@ pub struct IndexEntry {
     gid: u32,
     file_size: u32,
     pub oid: [u8; 20],
+
+    /// 1-bit assume-valid flag
+    /// 1-bit extended flag (must be zero in version 2)
+    /// 2-bit stage (used during merge)
+    /// 12-bit length of file name, max(0xfff, len(file name))
     flags: u16,
     extended_flags: Option<u16>,
     pub relative_path: RelativePath,
@@ -293,7 +313,7 @@ impl IndexEntry {
         &self.relative_path
     }
 }
-impl From<IndexEntry> for Vec<u8> {
+impl From<IndexEntry> for Object {
     fn from(entry: IndexEntry) -> Self {
         let ten_bytes = [
             entry.ctime,
@@ -326,23 +346,25 @@ impl From<IndexEntry> for Vec<u8> {
     }
 }
 
-/// 1-bit assume-valid flag
-/// 1-bit extended flag (must be zero in version 2)
-/// 2-bit stage (used during merge)
-/// 12-bit length of file name, max(0xfff, len(file name))
-#[allow(unused)]
-#[derive(Default)]
-struct Flags(u16);
-
-/*
 impl From<Index> for Object {
     fn from(index: Index) -> Object {
         [
-            index.header.into(),
-            index.entries.into(),
-            index.extensions.into(),
-            index.checksum,
-        ].concat()
+            //<IndexHeader as Into<Object>>::into(index.header),
+            <Object as From<IndexHeader>>::from(index.header),
+            index
+                .entries
+                .into_iter()
+                .map(|entry| <Object as From<IndexEntry>>::from(entry))
+                .flatten()
+                .collect::<Vec<u8>>(),
+            index
+                .extensions
+                .into_iter()
+                .map(|ext| <Object as From<IndexExtension>>::from(ext))
+                .flatten()
+                .collect::<Vec<u8>>(),
+            index.checksum.to_vec(),
+        ]
+        .concat()
     }
 }
-*/

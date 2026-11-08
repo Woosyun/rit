@@ -50,11 +50,14 @@ impl Repository {
         Ok(repo)
     }
 
-    pub fn load_index(&self) -> io::Result<Index> {
+    pub fn read_index(&self) -> io::Result<Index> {
         let mut file = fs::File::open(self.path.join(INDEX))?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
         Index::parse(&buf)
+    }
+    pub fn write_index(&self, index: Index) -> io::Result<()> {
+        fs::write(self.path.join(INDEX), <Object as From<Index>>::from(index))
     }
 
     // Temporal reading head operation.

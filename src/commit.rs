@@ -99,7 +99,7 @@ impl Command {
 
         // Change index to reflect structure of work tree
         let mut index_to_tree = IndexToTree::new();
-        for index_entry in index.entries {
+        for index_entry in &index.entries {
             index_to_tree.insert(index_entry)?;
         }
 
@@ -121,6 +121,9 @@ impl Command {
         // update head
         let head = self.repository.read_head()?;
         self.repository.references.write(head, commit_oid)?;
+
+        //update index
+        self.repository.write_index(index)?;
 
         Ok(())
     }
@@ -157,10 +160,10 @@ impl IndexToTree {
     // This method receives IndexEntry,
     // creates TreeEntry from it,
     // call 'insert_recursively' method to store it.
-    fn insert(&mut self, index_entry: IndexEntry) -> io::Result<()> {
-        let mode = index_entry.mode;
-        let oid = index_entry.oid;
-        let relative_path = index_entry.relative_path;
+    fn insert(&mut self, index_entry: &IndexEntry) -> io::Result<()> {
+        let mode = index_entry.mode().clone();
+        let oid = index_entry.oid().clone();
+        let relative_path = index_entry.path();
 
         let file_name = relative_path
             .file_name()
