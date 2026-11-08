@@ -80,7 +80,7 @@ pub struct Command {
 impl Command {
     pub fn execute(self) -> Result<(), Box<dyn error::Error>> {
         //create index from workspace
-        let index = self
+        let index_entries = self
             .repository
             .workspace
             .list_files()?
@@ -93,13 +93,13 @@ impl Command {
                 let metadata = fs::metadata(&path)?;
                 let relative_path = self.repository.workspace.relative_path(path)?;
 
-                Ok((relative_path, metadata, oid))
+                Ok(IndexEntry::from((metadata, oid, relative_path)))
             })
-            .collect::<io::Result<Index>>()?;
+            .collect::<io::Result<Vec<IndexEntry>>>()?;
 
         // Change index to reflect structure of work tree
         let mut index_to_tree = IndexToTree::new();
-        for index_entry in &index.entries {
+        for index_entry in &index_entries {
             index_to_tree.insert(index_entry)?;
         }
 
@@ -123,6 +123,7 @@ impl Command {
         self.repository.references.write(head, commit_oid)?;
 
         //update index
+        let index = Index::from(index_entries);
         self.repository.write_index(index)?;
 
         Ok(())
@@ -163,7 +164,7 @@ impl IndexToTree {
     fn insert(&mut self, index_entry: &IndexEntry) -> io::Result<()> {
         let mode = index_entry.mode().clone();
         let oid = index_entry.oid().clone();
-        let relative_path = index_entry.path();
+        let relative_path = index_entry.relative_path();
 
         let file_name = relative_path
             .file_name()

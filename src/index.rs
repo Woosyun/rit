@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use std::io::{Cursor, Read};
 use std::os::unix::fs::MetadataExt;
-use std::{fs, io, path};
+use std::{fs, io};
 
 /// # Index
 #[derive(Default)]
@@ -13,10 +13,6 @@ pub struct Index {
     checksum: [u8; 20],
 }
 impl Index {
-    pub fn insert(&mut self, entry: IndexEntry) {
-        self.entries.push(entry);
-        //update checksum
-    }
     pub fn entries(&self) -> &Vec<IndexEntry> {
         &self.entries
     }
@@ -24,6 +20,7 @@ impl Index {
         self.entries
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
+        // 12-byte header + 20-byte checksum
         if bytes.len() < 32 {
             return Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
@@ -38,7 +35,7 @@ impl Index {
         if expected_checksum != &calculated_checksum {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "SHA-1 checksum is invalid",
+                "checksum is invalid",
             ));
         }
 
@@ -97,13 +94,15 @@ impl Index {
             loop {
                 cursor.read_exact(&mut b)?;
                 if b[0] == 0 {
+                    // until b != '\0\
                     break;
                 }
                 name_bytes.push(b[0]);
             }
-            let relative_path = String::from_utf8(name_bytes)
+            let name = String::from_utf8(name_bytes)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{:?}", e)))?;
-            let relative_path = path::PathBuf::from(relative_path).try_into()?;
+            //let relative_path = path::PathBuf::from(relative_path).try_into()?;
+            let relative_path = RelativePath::build(name)?;
 
             let entry_len = cursor.position() - entry_start;
             let pad_len = (8 - (entry_len % 8)) % 8;
@@ -175,8 +174,27 @@ fn read_u16<R: Read>(r: &mut R) -> io::Result<u16> {
     Ok(u16::from_be_bytes(buf))
 }
 
+impl From<Vec<IndexEntry>> for Index {
+    fn from(entries: Vec<IndexEntry>) -> Self {
+        //todo: optimize how to hash.
+        let entries_raw = entries
+            .iter()
+            .map(|entry| <Object as From<IndexEntry>>::from(entry.clone()))
+            .flatten()
+            .collect::<Vec<u8>>();
+        let checksum = hash(entries_raw);
+
+        Self {
+            entries,
+            checksum,
+            ..Default::default()
+        }
+    }
+}
+
 // This look weird.
 // todo: fix or erase this.
+/*
 type ToBeEntry = (RelativePath, fs::Metadata, ObjectId);
 impl FromIterator<ToBeEntry> for Index {
     fn from_iter<I: IntoIterator<Item = ToBeEntry>>(iter: I) -> Self {
@@ -193,6 +211,7 @@ impl FromIterator<ToBeEntry> for Index {
         }
     }
 }
+*/
 
 const DIRC_SIGNATURE: [u8; 4] = ['D' as u8, 'I' as u8, 'R' as u8, 'C' as u8];
 pub struct IndexHeader {
@@ -230,6 +249,7 @@ impl From<IndexExtension> for Object {
     }
 }
 
+#[derive(Clone)]
 pub struct IndexEntry {
     ctime: u32,
     ctime_nano: u32,
@@ -248,6 +268,7 @@ pub struct IndexEntry {
     /// 2-bit stage (used during merge)
     /// 12-bit length of file name, max(0xfff, len(file name))
     flags: u16,
+
     extended_flags: Option<u16>,
     pub relative_path: RelativePath,
 }
@@ -285,7 +306,19 @@ impl IndexEntry {
             relative_path,
         }
     }
-    fn from(stat: fs::Metadata, oid: [u8; 20], relative_path: RelativePath) -> Self {
+    pub fn mode(&self) -> &u32 {
+        &self.mode
+    }
+    pub fn oid(&self) -> &[u8; 20] {
+        &self.oid
+    }
+    pub fn relative_path(&self) -> &RelativePath {
+        &self.relative_path
+    }
+}
+
+impl From<(fs::Metadata, ObjectId, RelativePath)> for IndexEntry {
+    fn from((stat, oid, relative_path): (fs::Metadata, ObjectId, RelativePath)) -> Self {
         Self {
             ctime: stat.ctime() as u32,
             ctime_nano: stat.ctime_nsec() as u32,
@@ -303,16 +336,8 @@ impl IndexEntry {
             relative_path,
         }
     }
-    pub fn mode(&self) -> &u32 {
-        &self.mode
-    }
-    pub fn oid(&self) -> &[u8; 20] {
-        &self.oid
-    }
-    pub fn path(&self) -> &RelativePath {
-        &self.relative_path
-    }
 }
+
 impl From<IndexEntry> for Object {
     fn from(entry: IndexEntry) -> Self {
         let ten_bytes = [
@@ -335,7 +360,6 @@ impl From<IndexEntry> for Object {
         [
             ten_bytes,
             entry.flags.to_be_bytes().to_vec(),
-            //todo: how to handle error of pathbuf?
             entry
                 .relative_path
                 .to_string_lossy()
