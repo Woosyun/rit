@@ -79,8 +79,8 @@ pub struct Command {
 }
 impl Command {
     pub fn execute(self) -> Result<(), Box<dyn error::Error>> {
-        //create index from workspace
-        let index_entries = self
+        // 1. Create index from workspace
+        let index: Index = self
             .repository
             .workspace
             .list_files()?
@@ -95,45 +95,55 @@ impl Command {
 
                 Ok(IndexEntry::from((metadata, oid, relative_path)))
             })
-            .collect::<io::Result<Vec<IndexEntry>>>()?;
+            .collect::<io::Result<Vec<IndexEntry>>>()?
+            .into();
 
-        // Change index to reflect structure of work tree
-        let mut index_to_tree = IndexToTree::new();
-        for index_entry in &index_entries {
-            index_to_tree.insert(index_entry)?;
+        // 2. Convert Index to Tree and store it recursively
+        let mut store_index = StoreIndex::new();
+        for index_entry in index.entries() {
+            store_index.insert(index_entry)?;
         }
+        let (_, tree_oid, _) = self.store_tree("/".to_string(), store_index)?;
 
-        // store IndexToTree to Tree
-        let (_, tree_oid, _) = self.store_tree("/".to_string(), index_to_tree)?;
-
-        // create commit
-        //let parent = self.repository.get_head()?;
+        // 3. Commit
+        let mut parent_ref = self.repository.read_head()?;
+        while !parent_ref.is_oid() {
+            let next_ref = parent_ref
+                .relative_path()
+                .expect("At least reference should be SymRef or ObjectId");
+            parent_ref = self.repository.references.read(next_ref)?;
+        }
+        let parent_oid = parent_ref.oid().expect("The reference should be ObjectId");
         let commit = Commit::new(
             tree_oid,
-            Default::default(),
-            //parent,
+            parent_oid.clone(),
             self.author,
             self.committer,
             self.message,
         );
         let commit_oid = self.repository.database.store(commit.into())?;
 
-        // update head
+        // 4. Update head
         let head = self.repository.read_head()?;
-        self.repository.references.write(head, commit_oid)?;
+        let head = if head.is_oid() {
+            RelativePath::build(HEAD)?
+        } else {
+            head.relative_path()
+                .expect("This reference(head) should be SymRef")
+                .clone()
+        };
 
-        //update index
-        let index = Index::from(index_entries);
+        self.repository.references.write(&head, commit_oid)?;
         self.repository.write_index(index)?;
 
         Ok(())
     }
 
     // This method stores Tree,
-    // creates TreeEntry with ObjectId returned.
-    fn store_tree(&self, name: String, index_to_tree: IndexToTree) -> io::Result<TreeEntry> {
+    // creates `TreeEntry` with `ObjectId` returned.
+    fn store_tree(&self, name: String, index_to_tree: StoreIndex) -> io::Result<TreeEntry> {
         let curr = match index_to_tree {
-            IndexToTree::Tree(m) => {
+            StoreIndex::Tree(m) => {
                 let entries = m
                     .into_iter()
                     .map(|(name, sub_itt)| self.store_tree(name, sub_itt))
@@ -143,17 +153,17 @@ impl Command {
 
                 (DIRECTORY_MODE, oid, name) as TreeEntry
             }
-            IndexToTree::Entry(tree_entry) => tree_entry,
+            StoreIndex::Entry(tree_entry) => tree_entry,
         };
         Ok(curr)
     }
 }
 
-enum IndexToTree {
-    Tree(collections::HashMap<String, IndexToTree>),
+enum StoreIndex {
+    Tree(collections::HashMap<String, StoreIndex>),
     Entry(TreeEntry),
 }
-impl IndexToTree {
+impl StoreIndex {
     fn new() -> Self {
         Self::Tree(Default::default())
     }
@@ -192,14 +202,14 @@ impl IndexToTree {
         mut parents: collections::VecDeque<String>,
         tree_entry: TreeEntry,
     ) {
-        if let IndexToTree::Tree(m) = self {
+        if let StoreIndex::Tree(m) = self {
             if parents.len() == 0 {
                 //todo: optimize dealing with name of entry.
-                m.insert(tree_entry.2.clone(), IndexToTree::Entry(tree_entry));
+                m.insert(tree_entry.2.clone(), StoreIndex::Entry(tree_entry));
             } else {
                 let parent = parents.pop_front().unwrap();
                 m.entry(parent)
-                    .or_insert_with(|| IndexToTree::new())
+                    .or_insert_with(|| StoreIndex::new())
                     .insert_recursively(parents, tree_entry);
             }
         }

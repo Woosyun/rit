@@ -62,13 +62,8 @@ impl Repository {
 
     // Temporal reading head operation.
     // todo: Fix this to refer recursive ref
-    pub fn read_head(&self) -> io::Result<RelativePath> {
-        let curr_head = RelativePath::build(HEAD)?;
-        let head = if let Reference::Sym(relative_path) = self.references.read(&curr_head)? {
-            relative_path
-        } else {
-            curr_head
-        };
-        Ok(head)
+    pub fn read_head(&self) -> io::Result<Reference> {
+        let head_path = RelativePath::build(HEAD)?;
+        self.references.read(&head_path)
     }
 }

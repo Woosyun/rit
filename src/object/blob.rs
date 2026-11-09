@@ -1,4 +1,5 @@
 use super::Object;
+use std::error;
 
 pub const BLOB_TYPE: &'static str = "blob";
 
@@ -17,5 +18,13 @@ impl From<Blob> for Object {
     fn from(blob: Blob) -> Object {
         let header = format!("{} {}\0", BLOB_TYPE, blob.0.len()).into_bytes();
         [header, blob.0].concat()
+    }
+}
+
+impl TryFrom<Object> for Blob {
+    type Error = Box<dyn error::Error>;
+
+    fn try_from(obj: Object) -> Result<Self, Self::Error> {
+        todo!()
     }
 }

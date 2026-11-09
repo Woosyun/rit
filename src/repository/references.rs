@@ -25,6 +25,19 @@ impl Reference {
         };
         Ok(reference)
     }
+
+    pub fn oid(&self) -> Option<&ObjectId> {
+        match self {
+            Reference::Oid(oid) => Some(oid),
+            _ => None,
+        }
+    }
+    pub fn relative_path(&self) -> Option<&RelativePath> {
+        match self {
+            Reference::Sym(relative_path) => Some(relative_path),
+            _ => None,
+        }
+    }
 }
 
 pub struct References {
@@ -36,11 +49,11 @@ impl References {
     }
 
     pub fn read(&self, relative_path: &RelativePath) -> io::Result<Reference> {
-        let target_path = self.path.join(relative_path);
+        let target_path: path::PathBuf = self.path.join(relative_path);
         let target_raw = fs::read(target_path)?;
         Reference::parse(target_raw)
     }
-    pub fn write(&self, relative_path: RelativePath, oid: ObjectId) -> io::Result<()> {
+    pub fn write(&self, relative_path: &RelativePath, oid: ObjectId) -> io::Result<()> {
         let target_path = self.path.join(relative_path);
         fs::write(target_path, oid)
     }

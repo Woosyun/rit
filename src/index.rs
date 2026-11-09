@@ -192,27 +192,6 @@ impl From<Vec<IndexEntry>> for Index {
     }
 }
 
-// This look weird.
-// todo: fix or erase this.
-/*
-type ToBeEntry = (RelativePath, fs::Metadata, ObjectId);
-impl FromIterator<ToBeEntry> for Index {
-    fn from_iter<I: IntoIterator<Item = ToBeEntry>>(iter: I) -> Self {
-        let m = iter
-            .into_iter()
-            .map(|(relative_path, metadata, oid)| IndexEntry::from(metadata, oid, relative_path))
-            .collect::<Vec<IndexEntry>>();
-
-        Index {
-            header: Default::default(),
-            entries: m,
-            extensions: vec![],
-            checksum: Default::default(), // todo: make it being updated along the iterating.
-        }
-    }
-}
-*/
-
 const DIRC_SIGNATURE: [u8; 4] = ['D' as u8, 'I' as u8, 'R' as u8, 'C' as u8];
 pub struct IndexHeader {
     signature: [u8; 4],

@@ -39,9 +39,8 @@ fn commit_once() -> Result<(), Box<dyn error::Error>> {
         .build()?
         .execute()?;
 
-    //needs status?
+    // needs status?
     // how are you gonna validate state of the current repository?
-    // todo: check gix-oxide
 
     todo!("implement status which shows blob/tree contents");
 }

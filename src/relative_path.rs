@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::{io, ops, path};
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct RelativePath(path::PathBuf);
 impl RelativePath {
     // This method is being used by "HEAD" constant.
