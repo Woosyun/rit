@@ -10,9 +10,14 @@ pub struct Index {
     //todo: use stage
     pub entries: Vec<IndexEntry>,
     extensions: Vec<IndexExtension>,
-    checksum: [u8; 20],
 }
 impl Index {
+    pub fn new(entries: Vec<IndexEntry>) -> Self {
+        Self {
+            entries,
+            ..Default::default()
+        }
+    }
     pub fn entries(&self) -> &Vec<IndexEntry> {
         &self.entries
     }
@@ -147,9 +152,6 @@ impl Index {
             });
         }
 
-        let mut checksum = [0u8; 20];
-        checksum.copy_from_slice(expected_checksum);
-
         Ok(Index {
             header: IndexHeader {
                 signature: Default::default(),
@@ -158,7 +160,6 @@ impl Index {
             },
             entries,
             extensions,
-            checksum,
         })
     }
 }
@@ -172,24 +173,6 @@ fn read_u16<R: Read>(r: &mut R) -> io::Result<u16> {
     let mut buf = [0u8; 2];
     r.read_exact(&mut buf)?;
     Ok(u16::from_be_bytes(buf))
-}
-
-impl From<Vec<IndexEntry>> for Index {
-    fn from(entries: Vec<IndexEntry>) -> Self {
-        //todo: optimize how to hash.
-        let entries_raw = entries
-            .iter()
-            .map(|entry| <Object as From<IndexEntry>>::from(entry.clone()))
-            .flatten()
-            .collect::<Vec<u8>>();
-        let checksum = hash(entries_raw);
-
-        Self {
-            entries,
-            checksum,
-            ..Default::default()
-        }
-    }
 }
 
 const DIRC_SIGNATURE: [u8; 4] = ['D' as u8, 'I' as u8, 'R' as u8, 'C' as u8];
@@ -351,7 +334,7 @@ impl From<IndexEntry> for Object {
 
 impl From<Index> for Object {
     fn from(index: Index) -> Object {
-        [
+        let raw = [
             //<IndexHeader as Into<Object>>::into(index.header),
             <Object as From<IndexHeader>>::from(index.header),
             index
@@ -366,8 +349,9 @@ impl From<Index> for Object {
                 .map(|ext| <Object as From<IndexExtension>>::from(ext))
                 .flatten()
                 .collect::<Vec<u8>>(),
-            index.checksum.to_vec(),
         ]
-        .concat()
+        .concat();
+        let checksum = hash(&raw);
+        [raw, checksum.to_vec()].concat()
     }
 }

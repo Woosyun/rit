@@ -80,7 +80,7 @@ pub struct Command {
 impl Command {
     pub fn execute(self) -> Result<(), Box<dyn error::Error>> {
         // 1. Create index from workspace
-        let index: Index = self
+        let index_entries: Vec<IndexEntry> = self
             .repository
             .workspace
             .list_files()?
@@ -95,8 +95,8 @@ impl Command {
 
                 Ok(IndexEntry::from((metadata, oid, relative_path)))
             })
-            .collect::<io::Result<Vec<IndexEntry>>>()?
-            .into();
+            .collect::<io::Result<Vec<IndexEntry>>>()?;
+        let index = Index::new(index_entries);
 
         // 2. Convert Index to Tree and store it recursively
         let mut store_index = StoreIndex::new();
