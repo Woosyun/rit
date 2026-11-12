@@ -231,6 +231,7 @@ pub struct IndexEntry {
     /// 12-bit length of file name, max(0xfff, len(file name))
     flags: u16,
 
+    #[allow(unused)]
     extended_flags: Option<u16>,
     pub relative_path: RelativePath,
 }
@@ -316,6 +317,7 @@ impl From<Index> for Vec<u8> {
         ]
         .concat();
         let checksum = hash(&raw);
+
         [raw, checksum.to_vec()].concat()
     }
 }

@@ -1,4 +1,5 @@
-use super::{Object, ObjectId, ObjectKind};
+use super::*;
+use std::io::Write;
 
 pub struct Commit {
     tree: ObjectId,
@@ -42,24 +43,26 @@ impl Author {
     }
 }
 
-impl From<Commit> for Object {
-    fn from(commit: Commit) -> Object {
-        let author = commit.author;
-        let author =
-            format!("{} <#{}> #{}", author.name, author.email, author.timestamp).into_bytes();
-        let committer = commit.committer;
-        let committer = format!(
-            "{} <#{}> #{}",
-            committer.name, committer.email, committer.timestamp
+impl From<&Commit> for Object {
+    fn from(commit: &Commit) -> Object {
+        let mut data = Vec::with_capacity(256);
+        writeln!(&mut data, "tree {}", encode_to_hex(&commit.tree)).unwrap();
+        writeln!(&mut data, "parent {}", encode_to_hex(&commit.parent)).unwrap();
+        writeln!(
+            &mut data,
+            "author {} <{}> {}",
+            commit.author.name, commit.author.email, commit.author.timestamp
         )
-        .into_bytes();
-        let data = [
-            commit.parent.to_vec(),
-            author,
-            committer,
-            commit.message.as_bytes().to_vec(),
-        ]
-        .concat();
+        .unwrap();
+        writeln!(
+            &mut data,
+            "committer {} <{}> {}",
+            commit.committer.name, commit.committer.email, commit.committer.timestamp
+        )
+        .unwrap();
+
+        write!(&mut data, "\n{}", commit.message).unwrap();
+
         Object::new(ObjectKind::Commit, data.len(), data)
     }
 }

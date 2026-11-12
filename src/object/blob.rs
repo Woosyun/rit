@@ -1,7 +1,4 @@
 use super::{Object, ObjectKind};
-use std::error;
-
-pub const BLOB_TYPE: &'static str = "blob";
 
 pub struct Blob(Vec<u8>);
 impl Blob {

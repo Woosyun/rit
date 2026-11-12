@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use std::io::Write;
-use std::{error, fs, io, path};
+use std::{fs, io, path};
 
 pub struct Database {
     path: path::PathBuf,
@@ -10,8 +10,8 @@ impl Database {
         Self { path }
     }
     pub fn store(&self, obj: Object) -> io::Result<ObjectId> {
-        //let obj: Object = object.into();
-        let oid: [u8; 20] = hash(obj.data.as_slice());
+        let obj = <ObjectRaw as From<&Object>>::from(&obj);
+        let oid = hash(&obj.data);
 
         let compressed = compress(&obj.data)?;
 

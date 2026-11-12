@@ -36,6 +36,7 @@ impl From<Tree> for Object {
             })
             .collect::<Vec<Vec<u8>>>()
             .concat();
+
         Object::new(ObjectKind::Tree, data.len(), data)
     }
 }
