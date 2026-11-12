@@ -1,4 +1,4 @@
-use super::{Object, ObjectId};
+use super::{Object, ObjectId, ObjectKind};
 
 pub struct Commit {
     tree: ObjectId,
@@ -43,24 +43,23 @@ impl Author {
 }
 
 impl From<Commit> for Object {
-    fn from(revision: Commit) -> Object {
-        let tree = [format!("tree ").into_bytes(), revision.tree.to_vec()].concat();
-        let author = revision.author;
+    fn from(commit: Commit) -> Object {
+        let author = commit.author;
         let author =
             format!("{} <#{}> #{}", author.name, author.email, author.timestamp).into_bytes();
-        let committer = revision.committer;
+        let committer = commit.committer;
         let committer = format!(
             "{} <#{}> #{}",
             committer.name, committer.email, committer.timestamp
         )
         .into_bytes();
-        [
-            tree,
-            revision.parent.to_vec(),
+        let data = [
+            commit.parent.to_vec(),
             author,
             committer,
-            revision.message.as_bytes().to_vec(),
+            commit.message.as_bytes().to_vec(),
         ]
-        .concat()
+        .concat();
+        Object::new(ObjectKind::Commit, data.len(), data)
     }
 }

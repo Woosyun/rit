@@ -11,9 +11,9 @@ impl Database {
     }
     pub fn store(&self, obj: Object) -> io::Result<ObjectId> {
         //let obj: Object = object.into();
-        let oid: [u8; 20] = hash(obj.as_slice());
+        let oid: [u8; 20] = hash(obj.data.as_slice());
 
-        let compressed = compress(&obj)?;
+        let compressed = compress(&obj.data)?;
 
         let dir_name: String = oid
             .iter()

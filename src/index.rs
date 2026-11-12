@@ -72,10 +72,10 @@ impl Index {
         for _ in 0..number_of_entries {
             let entry_start = cursor.position();
 
-            let ctime_sec = read_u32(&mut cursor)?;
-            let ctime_nsec = read_u32(&mut cursor)?;
-            let mtime_sec = read_u32(&mut cursor)?;
-            let mtime_nsec = read_u32(&mut cursor)?;
+            let ctime = read_u32(&mut cursor)?;
+            let ctime_nano = read_u32(&mut cursor)?;
+            let mtime = read_u32(&mut cursor)?;
+            let mtime_nano = read_u32(&mut cursor)?;
             let dev = read_u32(&mut cursor)?;
             let ino = read_u32(&mut cursor)?;
             let mode = read_u32(&mut cursor)?;
@@ -116,22 +116,22 @@ impl Index {
                 cursor.read_exact(&mut padding)?;
             }
 
-            let index_entry = IndexEntry::new(
-                ctime_sec,
-                ctime_nsec,
-                mtime_sec,
-                mtime_nsec,
+            let index_entry = IndexEntry {
+                ctime,
+                ctime_nano,
+                mtime,
+                mtime_nano,
                 dev,
                 ino,
                 mode,
                 uid,
                 gid,
                 file_size,
-                checksum,
+                oid: checksum,
                 flags,
                 extended_flags,
                 relative_path,
-            );
+            };
 
             entries.push(index_entry);
         }
@@ -190,7 +190,7 @@ impl Default for IndexHeader {
         }
     }
 }
-impl From<IndexHeader> for Object {
+impl From<IndexHeader> for Vec<u8> {
     fn from(header: IndexHeader) -> Self {
         [
             header.signature.to_vec(),
@@ -205,7 +205,7 @@ pub struct IndexExtension {
     pub signature: [u8; 4],
     pub data: Vec<u8>,
 }
-impl From<IndexExtension> for Object {
+impl From<IndexExtension> for Vec<u8> {
     fn from(ext: IndexExtension) -> Self {
         [ext.signature.to_vec(), ext.data].concat()
     }
@@ -235,52 +235,7 @@ pub struct IndexEntry {
     pub relative_path: RelativePath,
 }
 impl IndexEntry {
-    fn new(
-        ctime: u32,
-        ctime_nano: u32,
-        mtime: u32,
-        mtime_nano: u32,
-        dev: u32,
-        ino: u32,
-        mode: u32,
-        uid: u32,
-        gid: u32,
-        file_size: u32,
-        oid: [u8; 20],
-        flags: u16,
-        extended_flags: Option<u16>,
-        relative_path: RelativePath,
-    ) -> Self {
-        Self {
-            ctime,
-            ctime_nano,
-            mtime,
-            mtime_nano,
-            dev,
-            ino,
-            mode,
-            uid,
-            gid,
-            file_size,
-            oid,
-            flags,
-            extended_flags,
-            relative_path,
-        }
-    }
-    pub fn mode(&self) -> &u32 {
-        &self.mode
-    }
-    pub fn oid(&self) -> &[u8; 20] {
-        &self.oid
-    }
-    pub fn relative_path(&self) -> &RelativePath {
-        &self.relative_path
-    }
-}
-
-impl From<(fs::Metadata, ObjectId, RelativePath)> for IndexEntry {
-    fn from((stat, oid, relative_path): (fs::Metadata, ObjectId, RelativePath)) -> Self {
+    pub fn new(stat: fs::Metadata, oid: ObjectId, relative_path: RelativePath) -> Self {
         Self {
             ctime: stat.ctime() as u32,
             ctime_nano: stat.ctime_nsec() as u32,
@@ -298,9 +253,18 @@ impl From<(fs::Metadata, ObjectId, RelativePath)> for IndexEntry {
             relative_path,
         }
     }
+    pub fn mode(&self) -> &u32 {
+        &self.mode
+    }
+    pub fn oid(&self) -> &[u8; 20] {
+        &self.oid
+    }
+    pub fn relative_path(&self) -> &RelativePath {
+        &self.relative_path
+    }
 }
 
-impl From<IndexEntry> for Object {
+impl From<IndexEntry> for Vec<u8> {
     fn from(entry: IndexEntry) -> Self {
         let ten_bytes = [
             entry.ctime,
@@ -332,21 +296,21 @@ impl From<IndexEntry> for Object {
     }
 }
 
-impl From<Index> for Object {
-    fn from(index: Index) -> Object {
+impl From<Index> for Vec<u8> {
+    fn from(index: Index) -> Vec<u8> {
         let raw = [
             //<IndexHeader as Into<Object>>::into(index.header),
-            <Object as From<IndexHeader>>::from(index.header),
+            <Vec<u8> as From<IndexHeader>>::from(index.header),
             index
                 .entries
                 .into_iter()
-                .map(|entry| <Object as From<IndexEntry>>::from(entry))
+                .map(|entry| <Vec<u8> as From<IndexEntry>>::from(entry))
                 .flatten()
                 .collect::<Vec<u8>>(),
             index
                 .extensions
                 .into_iter()
-                .map(|ext| <Object as From<IndexExtension>>::from(ext))
+                .map(|ext| <Vec<u8> as From<IndexExtension>>::from(ext))
                 .flatten()
                 .collect::<Vec<u8>>(),
         ]

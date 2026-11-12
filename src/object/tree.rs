@@ -1,4 +1,4 @@
-use super::{Object, ObjectId};
+use super::{Object, ObjectId, ObjectKind};
 
 pub const EXECUTABLE_FILE_MODE: Mode = 0o100755;
 pub const READONLY_FILE_MODE: Mode = 0o100644;
@@ -24,7 +24,7 @@ impl From<Tree> for Object {
         entries.sort_by(|from, to| from.2.cmp(&to.2));
 
         //SPACE, NULL(\0)?
-        entries
+        let data = entries
             .into_iter()
             .map(|(mode, oid, name)| {
                 [
@@ -35,6 +35,7 @@ impl From<Tree> for Object {
                 .concat()
             })
             .collect::<Vec<Vec<u8>>>()
-            .concat()
+            .concat();
+        Object::new(ObjectKind::Tree, data.len(), data)
     }
 }

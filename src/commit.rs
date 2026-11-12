@@ -79,7 +79,7 @@ pub struct Command {
 }
 impl Command {
     pub fn execute(self) -> Result<(), Box<dyn error::Error>> {
-        // 1. Create index from workspace
+        // 1. Store files and create index from workspace
         let index_entries: Vec<IndexEntry> = self
             .repository
             .workspace
@@ -89,11 +89,14 @@ impl Command {
                 let content = fs::read(&path)?;
 
                 let blob = Blob::new(content);
-                let oid = self.repository.database.store(blob.into())?;
+                let oid = self
+                    .repository
+                    .database
+                    .store(<Object as From<Blob>>::from(blob))?;
                 let metadata = fs::metadata(&path)?;
                 let relative_path = self.repository.workspace.relative_path(path)?;
 
-                Ok(IndexEntry::from((metadata, oid, relative_path)))
+                Ok(IndexEntry::new(metadata, oid, relative_path))
             })
             .collect::<io::Result<Vec<IndexEntry>>>()?;
         let index = Index::new(index_entries);
@@ -105,7 +108,7 @@ impl Command {
         }
         let (_, tree_oid, _) = self.store_tree("/".to_string(), store_index)?;
 
-        // 3. Commit
+        // 3. Create commit
         let mut parent_ref = self.repository.read_head()?;
         while !parent_ref.is_oid() {
             let next_ref = parent_ref
@@ -141,12 +144,12 @@ impl Command {
 
     // This method stores Tree,
     // creates `TreeEntry` with `ObjectId` returned.
-    fn store_tree(&self, name: String, index_to_tree: StoreIndex) -> io::Result<TreeEntry> {
-        let curr = match index_to_tree {
+    fn store_tree(&self, name: String, store_index: StoreIndex) -> io::Result<TreeEntry> {
+        let curr = match store_index {
             StoreIndex::Tree(m) => {
                 let entries = m
                     .into_iter()
-                    .map(|(name, sub_itt)| self.store_tree(name, sub_itt))
+                    .map(|(name, sub_si)| self.store_tree(name, sub_si))
                     .collect::<io::Result<Vec<TreeEntry>>>()?;
                 let tree = Tree::new(entries);
                 let oid = self.repository.database.store(tree.into())?;

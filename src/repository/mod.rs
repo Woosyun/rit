@@ -57,7 +57,7 @@ impl Repository {
         Index::parse(&buf)
     }
     pub fn write_index(&self, index: Index) -> io::Result<()> {
-        fs::write(self.path.join(INDEX), <Object as From<Index>>::from(index))
+        fs::write(self.path.join(INDEX), <Vec<u8> as From<Index>>::from(index))
     }
 
     // Temporal reading head operation.
