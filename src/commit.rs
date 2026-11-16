@@ -94,11 +94,12 @@ impl Command {
                     .database
                     .store(<Object as From<Blob>>::from(blob))?;
                 let metadata = fs::metadata(&path)?;
-                let relative_path = self.repository.workspace.relative_path(path)?;
+                //let relative_path = self.repository.workspace.relative_path(path)?;
+                let relative_path = get_relative_path(&self.repository.workspace.path, path)?;
 
                 Ok(IndexEntry::new(metadata, oid, relative_path))
             })
-            .collect::<io::Result<Vec<IndexEntry>>>()?;
+            .collect::<Result<Vec<IndexEntry>, Box<dyn error::Error>>>()?;
         let index = Index::new(index_entries);
 
         // 2. Convert Index to Tree and store it recursively
@@ -124,7 +125,10 @@ impl Command {
             self.committer,
             self.message,
         );
-        let commit_oid = self.repository.database.store(commit.into())?;
+        let commit_oid = self
+            .repository
+            .database
+            .store(<Object as From<&Commit>>::from(&commit))?;
 
         // 4. Update head
         let head = self.repository.read_head()?;

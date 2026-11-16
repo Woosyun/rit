@@ -18,11 +18,11 @@ impl Workspace {
     /// **Note** Result is not garanteed to be sorted.
     pub fn list_files(&self) -> Result<Vec<path::PathBuf>, Box<dyn error::Error>> {
         let mut hash = vec![];
-        self.read_dir(&self.path, &mut hash)?;
+        self.read_dir_recursively(&self.path, &mut hash)?;
 
         Ok(hash)
     }
-    fn read_dir<P: AsRef<path::Path>>(
+    fn read_dir_recursively<P: AsRef<path::Path>>(
         &self,
         dir: P,
         hash: &mut Vec<path::PathBuf>,
@@ -38,7 +38,7 @@ impl Workspace {
                 //tothink: consider how to deal with symlink
                 continue;
             } else if file_type.is_dir() {
-                self.read_dir(target_path, hash)?;
+                self.read_dir_recursively(target_path, hash)?;
             } else {
                 let relative_path = target_path.strip_prefix(&self.path)?.to_path_buf();
                 hash.push(relative_path);
@@ -46,18 +46,6 @@ impl Workspace {
         }
 
         Ok(())
-    }
-
-    /// this method returns relative path from working directory.
-    pub fn relative_path<P: AsRef<path::Path>>(&self, path: P) -> io::Result<RelativePath> {
-        let path = path
-            .as_ref()
-            .canonicalize()?
-            .strip_prefix(&self.path)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{:?}", e)))?
-            .to_path_buf();
-
-        RelativePath::build(path)
     }
 }
 

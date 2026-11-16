@@ -4,7 +4,7 @@ use std::os::unix::fs::MetadataExt;
 use std::{fs, io};
 
 /// # Index
-#[derive(Default)]
+#[derive(Default, Eq, PartialEq, Debug)]
 pub struct Index {
     header: IndexHeader,
     //todo: use stage
@@ -176,6 +176,7 @@ fn read_u16<R: Read>(r: &mut R) -> io::Result<u16> {
 }
 
 const DIRC_SIGNATURE: [u8; 4] = ['D' as u8, 'I' as u8, 'R' as u8, 'C' as u8];
+#[derive(Eq, PartialEq, Debug)]
 pub struct IndexHeader {
     signature: [u8; 4],
     version: u32,
@@ -201,6 +202,7 @@ impl From<IndexHeader> for Vec<u8> {
     }
 }
 
+#[derive(Eq, PartialEq, Debug)]
 pub struct IndexExtension {
     pub signature: [u8; 4],
     pub data: Vec<u8>,
@@ -211,7 +213,7 @@ impl From<IndexExtension> for Vec<u8> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct IndexEntry {
     ctime: u32,
     ctime_nano: u32,

@@ -31,13 +31,18 @@ fn commit_once() -> Result<(), Box<dyn error::Error>> {
     fs::create_dir(tempdir.path().join("b"))?;
     fs::write(tempdir.path().join("b/c.txt"), "c")?;
 
+    let commit_message = "no-commit";
+    let my_name = "me";
+    let my_email = "me123@abc.com";
     commit::Builder::new()
         .working_directory(tempdir.path())
-        .message("no-commit")
-        .author("me", "me123@abc.com")
-        .committer("me", "me123@abc.com")
+        .message(commit_message)
+        .author(my_name, my_email)
+        .committer(my_name, my_email)
         .build()?
         .execute()?;
+
+    //let head =
 
     // needs status?
     // how are you gonna validate state of the current repository?

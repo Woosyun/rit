@@ -11,9 +11,10 @@ use references::*;
 pub mod workspace;
 use workspace::*;
 
-pub const REPOSITORY: &'static str = ".rit";
+pub const REPOSITORY: &'static str = ".git";
 pub const DATABASE: &'static str = "objects";
 pub const REFS: &'static str = "refs";
+pub const HEADS: &'static str = "heads";
 pub const INDEX: &'static str = "index";
 pub const HEAD: &'static str = "HEAD";
 
@@ -60,7 +61,6 @@ impl Repository {
         fs::write(self.path.join(INDEX), <Vec<u8> as From<Index>>::from(index))
     }
 
-    // Temporal reading head operation.
     // todo: Fix this to refer recursive ref
     pub fn read_head(&self) -> io::Result<Reference> {
         let head_path = RelativePath::build(HEAD)?;

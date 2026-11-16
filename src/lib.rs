@@ -5,6 +5,7 @@ pub mod init;
 // core components
 pub mod index;
 pub mod object;
+pub mod reference;
 pub mod repository;
 
 // utilities
@@ -16,6 +17,7 @@ pub mod zlib;
 pub mod prelude {
     pub use super::index::*;
     pub use super::object::*;
+    pub use super::reference::*;
     pub use super::repository::*;
 
     pub use super::lockfile::*;
@@ -23,3 +25,7 @@ pub mod prelude {
     pub use super::sha1::*;
     pub use super::zlib::*;
 }
+
+// test
+#[cfg(test)]
+pub mod test;
