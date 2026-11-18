@@ -15,6 +15,9 @@ pub mod sha1;
 pub mod zlib;
 
 pub mod prelude {
+    pub use super::commit;
+    pub use super::init;
+
     pub use super::index::*;
     pub use super::object::*;
     pub use super::reference::*;
@@ -25,7 +28,3 @@ pub mod prelude {
     pub use super::sha1::*;
     pub use super::zlib::*;
 }
-
-// test
-#[cfg(test)]
-pub mod test;

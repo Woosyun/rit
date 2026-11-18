@@ -1,5 +1,5 @@
-use crate::prelude::*;
-use std::{collections, error, fs, io, path};
+use rit::prelude::*;
+use std::{collections, error, fs, path};
 use tempdir::TempDir;
 
 pub type TestResult<T> = Result<T, Box<dyn error::Error>>;
@@ -9,22 +9,51 @@ pub struct TestHarness {
     pub git_workdir: TempDir,
 }
 impl TestHarness {
-    pub fn build() -> io::Result<Self> {
-        let rit_workdir = TempDir::new("test-for-rit")?;
-        let git_workdir = TempDir::new("test-for-git")?;
+    pub fn new() -> Self {
+        let rit_workdir =
+            TempDir::new("test-for-rit").expect("Failed to create temporary directory");
+        let git_workdir =
+            TempDir::new("test-for-git").expect("Failed to create temporary directory");
 
-        let th = Self {
+        Self {
             rit_workdir,
             git_workdir,
-        };
-        Ok(th)
+        }
     }
 
-    pub fn try_init(&self) -> TestResult<()> {
-        Ok(())
+    pub fn try_init(&self) {
+        [self.rit_workdir.path(), self.git_workdir.path()]
+            .into_iter()
+            .for_each(|workdir| {
+                init::Builder::new()
+                    .working_directory(workdir)
+                    .build()
+                    .expect("InitBuilder should be able to build Init")
+                    .execute()
+                    .expect("Cannot run Init");
+            });
+        self.assert_repo_state_equal()
+            .expect("Repository state after init should be same");
+    }
+    pub fn try_commit(&self, msg: &str, name: &str, email: &str) {
+        [self.rit_workdir.path(), self.git_workdir.path()]
+            .into_iter()
+            .for_each(|workdir| {
+                commit::Builder::new()
+                    .working_directory(workdir)
+                    .message(msg)
+                    .author(name, email)
+                    .committer(name, email)
+                    .build()
+                    .expect("CommitBuilder should be able to build Commit")
+                    .execute()
+                    .expect("Cannot run Commit");
+            });
+        self.assert_repo_state_equal()
+            .expect("Repository state after commit same");
     }
 
-    pub fn assert_repo_state_equal(&self) -> TestResult<bool> {
+    fn assert_repo_state_equal(&self) -> TestResult<bool> {
         let rit = self.rit_workdir.path().join(REPOSITORY);
         let git = self.git_workdir.path().join(REPOSITORY);
 

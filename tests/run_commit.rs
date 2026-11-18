@@ -1,51 +1,16 @@
-use rit::{commit, init};
-use std::{error, fs};
-use tempdir::TempDir;
+mod test_harness;
+use test_harness::TestHarness;
 
 #[test]
 #[should_panic(expected = "cannot run commit without repository initialized")]
-fn commit_without_repository_initialized() -> () {
-    let tempdir =
-        TempDir::new("commit_on_empty_working_directory").expect("TempDir should be created");
-    commit::Builder::new()
-        .working_directory(tempdir.path())
-        .message("no-commit")
-        .author("me", "me123@abc.com")
-        .committer("me", "me123@abc.com")
-        .build()
-        .expect("CommitBuilder should be able to build Commit")
-        .execute()
-        .expect("cannot run commit without repository initialized")
+fn commit_without_repository_initialized() {
+    let th = TestHarness::new();
+    th.try_commit("errorneous commit", "me", "me1234@qwer.com");
 }
 
 #[test]
-fn commit_once() -> Result<(), Box<dyn error::Error>> {
-    let tempdir = TempDir::new("commit_on_empty_working_directory")?;
-
-    init::Builder::new()
-        .working_directory(tempdir.path())
-        .build()?
-        .execute()?;
-
-    fs::write(tempdir.path().join("a.txt"), "a")?;
-    fs::create_dir(tempdir.path().join("b"))?;
-    fs::write(tempdir.path().join("b/c.txt"), "c")?;
-
-    let commit_message = "no-commit";
-    let my_name = "me";
-    let my_email = "me123@abc.com";
-    commit::Builder::new()
-        .working_directory(tempdir.path())
-        .message(commit_message)
-        .author(my_name, my_email)
-        .committer(my_name, my_email)
-        .build()?
-        .execute()?;
-
-    //let head =
-
-    // needs status?
-    // how are you gonna validate state of the current repository?
-
-    todo!("implement status which shows blob/tree contents");
+fn commit_once() {
+    let th = TestHarness::new();
+    th.try_init();
+    th.try_commit("errorneous commit", "me", "me1234@qwer.com");
 }
