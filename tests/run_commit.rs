@@ -9,8 +9,10 @@ fn commit_without_repository_initialized() {
 }
 
 #[test]
-fn commit_once() {
+fn commits() {
     let th = TestHarness::new();
     th.try_init();
-    th.try_commit("errorneous commit", "me", "me1234@qwer.com");
+    th.try_commit("first commit", "me", "me1234@qwer.com");
+    th.try_commit("second commit", "me", "me1234@qwer.com");
+    th.try_commit("third commit", "me", "me1234@qwer.com");
 }

@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use rit::prelude::*;
 use std::{collections, error, fs, path};
 use tempdir::TempDir;
@@ -122,7 +124,7 @@ fn read_objects(repo: &path::Path) -> TestResult<collections::BTreeMap<ObjectId,
         if oid_str.len() != 40 {
             return Err("oid is wrong".into());
         }
-        let oid = decode_to_oid(&oid_str)?;
+        let oid = decode_str_to_oid(&oid_str)?;
         let data = fs::read_to_string(db_dir.join(dir_entry.path()))?;
         m.insert(oid, data);
         Ok(())

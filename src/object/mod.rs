@@ -10,11 +10,13 @@ pub use commit::*;
 use std::io;
 use std::io::Write;
 
+/// ObjectId is equal as \[u8; 20],
+/// pointing Object(Tree, Blob, Commit).
 pub type ObjectId = [u8; 20];
-pub fn encode_to_hex(oid: &ObjectId) -> String {
+pub fn encode_oid_to_hex(oid: &ObjectId) -> String {
     oid.iter().map(|b| format!("{:02x}", b)).collect::<String>()
 }
-pub fn decode_to_oid(hex: &str) -> io::Result<ObjectId> {
+pub fn decode_str_to_oid(hex: &str) -> io::Result<ObjectId> {
     if hex.len() != 40 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
@@ -27,10 +29,13 @@ pub fn decode_to_oid(hex: &str) -> io::Result<ObjectId> {
         .chunks(2)
         .map(|vals| Ok(char_to_word(vals[0] as u8)? << 4 | char_to_word(vals[1] as u8)?))
         .collect::<io::Result<Vec<u8>>>()?;
-    let mut re = [0; 20];
+    let mut re = [0_u8; 20];
     re.copy_from_slice(&v[..]);
     Ok(re)
 }
+
+/// Changes u8 of char to hex of u4 representation
+/// treating same upper/lower cases.
 fn char_to_word(c: u8) -> io::Result<u8> {
     let i = match c {
         b'a'..=b'f' => c - b'a' + 10,
@@ -46,6 +51,8 @@ fn char_to_word(c: u8) -> io::Result<u8> {
     Ok(i)
 }
 
+/// Represents Object(Commit, Tree, Blob),
+/// with byte-content, type, length of the byte-content.
 pub struct Object {
     pub kind: ObjectKind,
     pub size: u32,
@@ -75,6 +82,8 @@ impl ObjectKind {
     }
 }
 
+/// Byte representation of [`Object`],
+/// actual one to store/retrieve.
 pub struct ObjectRaw {
     pub data: Vec<u8>,
 }
