@@ -98,8 +98,9 @@ impl io::Read for LockFile {
 
 // For unexpected errors
 impl Drop for LockFile {
-    fn drop(&mut self) -> () {
-        // todo: handle errors
-        let _ = fs::remove_file(&self.path);
+    fn drop(&mut self) {
+        if self.file.is_some() {
+            let _ = fs::remove_file(&self.path);
+        }
     }
 }

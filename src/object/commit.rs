@@ -46,8 +46,18 @@ impl Author {
 impl From<&Commit> for Object {
     fn from(commit: &Commit) -> Object {
         let mut data = Vec::with_capacity(256);
-        writeln!(&mut data, "tree {}", encode_oid_to_hex(&commit.tree)).unwrap();
-        writeln!(&mut data, "parent {}", encode_oid_to_hex(&commit.parent)).unwrap();
+        writeln!(
+            &mut data,
+            "tree {}",
+            <String as From<&ObjectId>>::from(&commit.tree)
+        )
+        .unwrap();
+        writeln!(
+            &mut data,
+            "parent {}",
+            <String as From<&ObjectId>>::from(&commit.parent)
+        )
+        .unwrap();
         writeln!(
             &mut data,
             "author {} <{}> {}",

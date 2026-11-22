@@ -33,7 +33,11 @@ fn empty_directories_are_ignored_and_pruned_when_emptied() {
     th.write_file("tracked/keep.txt", "keep\n");
     th.write_file("will_empty/temp.txt", "temp\n");
 
-    th.commit("commit with empty dirs present", "Alice", "alice@example.com");
+    th.commit(
+        "commit with empty dirs present",
+        "Alice",
+        "alice@example.com",
+    );
 
     // Delete the only file in `will_empty/`, leaving `will_empty/` as an empty directory.
     // The `will_empty` tree entry must disappear from the root tree.
@@ -64,7 +68,11 @@ fn git_tree_sorting_order_files_vs_directories() {
     th.write_file("sub/a.b", "4");
     th.write_file("sub/a-b", "5");
 
-    th.commit("verify canonical git tree sorting", "Alice", "alice@example.com");
+    th.commit(
+        "verify canonical git tree sorting",
+        "Alice",
+        "alice@example.com",
+    );
 }
 
 #[test]
@@ -162,9 +170,15 @@ fn empty_binary_and_large_files() {
         .collect();
     th.write_file("large.bin", &large);
 
-    th.commit("empty, binary, and large blobs", "Alice", "alice@example.com");
+    th.commit(
+        "empty, binary, and large blobs",
+        "Alice",
+        "alice@example.com",
+    );
 
-    let empty_blob_oid = decode_str_to_oid("e69de29bb2d1d6434b8b29ae777ad8c2e48c5391").unwrap();
+    let empty_blob_oid = "e69de29bb2d1d6434b8b29ae777ad8c2e48c5391"
+        .try_into()
+        .unwrap();
     let objects = common::read_objects(&th.rit_path().join(REPOSITORY)).unwrap();
     assert_eq!(
         objects.get(&empty_blob_oid).map(Vec::as_slice),
@@ -190,7 +204,11 @@ fn special_hidden_unicode_and_long_filenames() {
     let long_name = format!("long_dir/{}.txt", "x".repeat(120));
     th.write_file(&long_name, "long filename content\n");
 
-    th.commit("special and unicode filenames", "Alice", "alice@example.com");
+    th.commit(
+        "special and unicode filenames",
+        "Alice",
+        "alice@example.com",
+    );
 }
 
 #[test]
@@ -222,7 +240,8 @@ fn dot_git_directory_is_never_committed_but_dot_git_prefixed_files_are() {
             .as_os_str()
             .to_string_lossy();
         assert_ne!(
-            first_component, ".git",
+            first_component,
+            ".git",
             "Internal .git entry leaked into index: {:?}",
             entry.relative_path()
         );
@@ -240,7 +259,11 @@ fn rename_and_move_files_across_directories() {
 
     th.rename("old.txt", "new.txt");
     th.rename("a/b/deep.txt", "c/d/deep.txt");
-    th.commit("after rename and cross-dir move", "Alice", "alice@example.com");
+    th.commit(
+        "after rename and cross-dir move",
+        "Alice",
+        "alice@example.com",
+    );
 }
 
 #[test]
@@ -257,7 +280,11 @@ fn index_entry_padding_covers_all_mod_8_path_lengths() {
         th.write_file(&name, format!("len={len}\n"));
     }
 
-    th.commit("all mod-8 index entry lengths", "Alice", "alice@example.com");
+    th.commit(
+        "all mod-8 index entry lengths",
+        "Alice",
+        "alice@example.com",
+    );
 }
 
 #[test]

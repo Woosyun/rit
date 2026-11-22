@@ -240,8 +240,14 @@ impl TestHarness {
         committer_name: &str,
         committer_email: &str,
     ) {
-        self.try_rit_commit(msg, author_name, author_email, committer_name, committer_email)
-            .expect("rit commit failed");
+        self.try_rit_commit(
+            msg,
+            author_name,
+            author_email,
+            committer_name,
+            committer_email,
+        )
+        .expect("rit commit failed");
 
         let env = [
             ("GIT_AUTHOR_NAME", author_name),
@@ -294,10 +300,10 @@ impl TestHarness {
         assert_eq!(rit_head, git_head, "HEAD mismatch between rit and git");
 
         // 2. Compare References under refs/heads/**
-        let rit_refs = read_references(&rit)
-            .unwrap_or_else(|e| panic!("Failed to read rit refs/heads: {e}"));
-        let git_refs = read_references(&git)
-            .unwrap_or_else(|e| panic!("Failed to read git refs/heads: {e}"));
+        let rit_refs =
+            read_references(&rit).unwrap_or_else(|e| panic!("Failed to read rit refs/heads: {e}"));
+        let git_refs =
+            read_references(&git).unwrap_or_else(|e| panic!("Failed to read git refs/heads: {e}"));
         assert_eq!(
             rit_refs, git_refs,
             "refs/heads mismatch between rit and git"
@@ -310,8 +316,8 @@ impl TestHarness {
             read_objects(&git).unwrap_or_else(|e| panic!("Failed to read git objects: {e}"));
 
         if rit_objects != git_objects {
-            let rit_hex: Vec<String> = rit_objects.keys().map(encode_oid_to_hex).collect();
-            let git_hex: Vec<String> = git_objects.keys().map(encode_oid_to_hex).collect();
+            let rit_hex: Vec<String> = rit_objects.keys().map(String::from).collect();
+            let git_hex: Vec<String> = git_objects.keys().map(String::from).collect();
             let mut details = format!(
                 "Objects mismatch between rit and git!\n  rit OIDs ({}): {:?}\n  git OIDs ({}): {:?}\n",
                 rit_hex.len(),
@@ -323,7 +329,7 @@ impl TestHarness {
                 if !git_objects.contains_key(oid) {
                     details.push_str(&format!(
                         "  [only in rit] {} => {:?}\n",
-                        encode_oid_to_hex(oid),
+                        String::from(oid),
                         String::from_utf8_lossy(raw)
                     ));
                 }
@@ -332,7 +338,7 @@ impl TestHarness {
                 if !rit_objects.contains_key(oid) {
                     details.push_str(&format!(
                         "  [only in git] {} => {:?}\n",
-                        encode_oid_to_hex(oid),
+                        String::from(oid),
                         String::from_utf8_lossy(raw)
                     ));
                 }
@@ -477,7 +483,11 @@ pub fn read_objects(repo: &Path) -> TestResult<BTreeMap<ObjectId, Vec<u8>>> {
         }
 
         if !entry.file_type()?.is_dir() {
-            return Err(format!("Unexpected file directly under objects/: {:?}", entry.path()).into());
+            return Err(format!(
+                "Unexpected file directly under objects/: {:?}",
+                entry.path()
+            )
+            .into());
         }
         if name_str.len() != 2 || !name_str.chars().all(|c| c.is_ascii_hexdigit()) {
             return Err(format!(
@@ -500,24 +510,21 @@ pub fn read_objects(repo: &Path) -> TestResult<BTreeMap<ObjectId, Vec<u8>>> {
             }
 
             let oid_str = format!("{name_str}{obj_name_str}");
-            let oid = decode_str_to_oid(&oid_str)?;
+            let oid = ObjectId::try_from(oid_str.as_str())?;
 
             let compressed = fs::read(obj_entry.path())?;
             let mut decoder = ZlibDecoder::new(compressed.as_slice());
             let mut decompressed = Vec::new();
-            decoder.read_to_end(&mut decompressed).map_err(|e| {
-                format!(
-                    "Failed to zlib-decompress object {}: {}",
-                    oid_str, e
-                )
-            })?;
+            decoder
+                .read_to_end(&mut decompressed)
+                .map_err(|e| format!("Failed to zlib-decompress object {}: {}", oid_str, e))?;
 
             let actual_oid = hash(&decompressed);
             if actual_oid != oid {
                 return Err(format!(
                     "SHA-1 mismatch for object {}: content hashes to {}",
                     oid_str,
-                    encode_oid_to_hex(&actual_oid)
+                    String::from(&actual_oid)
                 )
                 .into());
             }
@@ -550,7 +557,7 @@ pub fn normalize_index(index: &Index) -> Vec<NormalizedIndexEntry> {
         .map(|e| NormalizedIndexEntry {
             path: e.relative_path().clone(),
             mode: *e.mode(),
-            oid: *e.oid(),
+            oid: e.oid().clone(),
         })
         .collect()
 }

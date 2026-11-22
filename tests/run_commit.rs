@@ -130,7 +130,9 @@ fn empty_repository_sequential_commits() {
     assert_ne!(second_oid, third_oid);
 
     // Empty tree object (4b825dc642cb6eb9a060e54bf8d69288fbee4904) must exist in objects.
-    let empty_tree_oid = decode_str_to_oid("4b825dc642cb6eb9a060e54bf8d69288fbee4904").unwrap();
+    let empty_tree_oid = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+        .try_into()
+        .unwrap();
     let objects = common::read_objects(&th.rit_path().join(REPOSITORY)).unwrap();
     assert!(
         objects.contains_key(&empty_tree_oid),
@@ -179,7 +181,8 @@ fn commit_add_modify_delete_and_delete_all_lifecycle() {
             objects_after_c4.get(oid),
             Some(raw),
             "Historical object {} must not be lost or altered",
-            encode_oid_to_hex(oid)
+            // encode_oid_to_hex(oid)
+            <String as From<&ObjectId>>::from(oid)
         );
     }
 }
@@ -318,7 +321,11 @@ fn commit_on_nested_branch_name_creates_ref_parent_directories() {
 
     // Second commit on the same nested branch updates the ref properly
     th.write_file("feature.txt", "new feature v2\n");
-    th.commit("second commit on nested branch", "Alice", "alice@example.com");
+    th.commit(
+        "second commit on nested branch",
+        "Alice",
+        "alice@example.com",
+    );
 }
 
 #[test]

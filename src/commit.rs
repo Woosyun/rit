@@ -86,14 +86,14 @@ impl Command {
             .list_files()?
             .iter()
             .map(|path| {
-                let content = fs::read(&path)?;
+                let content = fs::read(path)?;
 
                 let blob = Blob::new(content);
                 let oid = self
                     .repository
                     .database
                     .store(<Object as From<Blob>>::from(blob))?;
-                let metadata = fs::metadata(&path)?;
+                let metadata = fs::metadata(path)?;
                 //let relative_path = self.repository.workspace.relative_path(path)?;
                 let relative_path = get_relative_path(&self.repository.workspace.path, path)?;
 
@@ -140,7 +140,7 @@ impl Command {
                 .clone()
         };
 
-        self.repository.references.write(&head, commit_oid)?;
+        self.repository.references.write(&head, &commit_oid)?;
         self.repository.write_index(index)?;
 
         Ok(())
@@ -179,7 +179,7 @@ impl StoreIndex {
     // creates TreeEntry from it,
     // call 'insert_recursively' method to store it.
     fn insert(&mut self, index_entry: &IndexEntry) -> io::Result<()> {
-        let mode = index_entry.mode().clone();
+        let mode = index_entry.mode().to_owned();
         let oid = index_entry.oid().clone();
         let relative_path = index_entry.relative_path();
 
@@ -210,13 +210,13 @@ impl StoreIndex {
         tree_entry: TreeEntry,
     ) {
         if let StoreIndex::Tree(m) = self {
-            if parents.len() == 0 {
+            if parents.is_empty() {
                 //todo: optimize dealing with name of entry.
                 m.insert(tree_entry.2.clone(), StoreIndex::Entry(tree_entry));
             } else {
                 let parent = parents.pop_front().unwrap();
                 m.entry(parent)
-                    .or_insert_with(|| StoreIndex::new())
+                    .or_insert_with(StoreIndex::new)
                     .insert_recursively(parents, tree_entry);
             }
         }

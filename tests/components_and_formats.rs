@@ -4,6 +4,7 @@ use common::run_git_checked;
 use flate2::read::ZlibDecoder;
 use rit::prelude::*;
 use rit::repository::database::Database;
+use std::assert_matches;
 use std::fs;
 use std::io::{ErrorKind, Read, Write};
 use std::os::unix::fs::PermissionsExt;
@@ -18,12 +19,13 @@ use tempdir::TempDir;
 #[test]
 fn oid_hex_encode_decode_roundtrip_and_invalid_inputs() {
     let hex = "0123456789abcdef0123456789abcdef01234567";
-    let oid = decode_str_to_oid(hex).expect("valid lowercase 40-char hex should decode");
-    assert_eq!(encode_oid_to_hex(&oid), hex);
+    let oid = ObjectId::try_from(hex).expect("valid lowercase 40-char hex should decode");
+    assert_eq!(String::from(&oid), hex);
 
     // Uppercase hex should decode to the same bytes and re-encode lowercase.
     let upper = hex.to_ascii_uppercase();
-    let oid_upper = decode_str_to_oid(&upper).expect("valid uppercase 40-char hex should decode");
+    let oid_upper =
+        ObjectId::try_from(upper.as_str()).expect("valid uppercase 40-char hex should decode");
     assert_eq!(oid_upper, oid);
 
     // Invalid lengths and characters must return Err (never panic).
@@ -41,7 +43,7 @@ fn oid_hex_encode_decode_roundtrip_and_invalid_inputs() {
     ];
     for bad in &invalid_cases {
         assert!(
-            decode_str_to_oid(bad).is_err(),
+            ObjectId::try_from(bad.as_str()).is_err(),
             "decode_str_to_oid should reject {:?}",
             bad
         );
@@ -56,30 +58,31 @@ fn oid_hex_encode_decode_roundtrip_and_invalid_inputs() {
 fn blob_object_raw_matches_git_format_and_roundtrips_binary_with_nulls() {
     // 1. Canonical empty blob
     let empty_obj: Object = Blob::new(vec![]).into();
-    let empty_raw = ObjectRaw::from(&empty_obj);
+    let empty_raw = ObjectRaw::from(empty_obj);
     assert_eq!(empty_raw.data, b"blob 0\0");
     assert_eq!(
-        encode_oid_to_hex(&hash(&empty_raw.data)),
-        "e69de29bb2d1d6434b8b29ae777ad8c2e48c5391"
+        String::from(&hash(&empty_raw.data)),
+        "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
     );
 
     // 2. Canonical "hello\n" blob
     let hello_obj: Object = Blob::new(b"hello\n".to_vec()).into();
-    let hello_raw = ObjectRaw::from(&hello_obj);
+    let hello_raw = ObjectRaw::from(hello_obj);
     assert_eq!(hello_raw.data, b"blob 6\0hello\n");
     assert_eq!(
-        encode_oid_to_hex(&hash(&hello_raw.data)),
+        String::from(&hash(&hello_raw.data)),
         "ce013625030ba8dba906f756967f9e9ca394464a"
     );
 
     // 3. Binary blob containing embedded NUL bytes must roundtrip cleanly through ObjectRaw::parse
     let payload = b"ab\0cd\0ef".to_vec();
     let bin_obj: Object = Blob::new(payload.clone()).into();
-    let bin_raw = ObjectRaw::from(&bin_obj);
+    let bin_raw = ObjectRaw::from(bin_obj);
     assert_eq!(bin_raw.data, b"blob 8\0ab\0cd\0ef");
 
-    let parsed = bin_raw.parse().expect("ObjectRaw::parse should succeed");
-    assert!(matches!(parsed.kind, ObjectKind::Blob));
+    //let parsed = bin_raw.parse().expect("ObjectRaw::parse should succeed");
+    let parsed = Object::try_from(bin_raw).expect("Parsing should succeed on valid raw object");
+    assert_matches!(parsed.kind, ObjectKind::Blob);
     assert_eq!(parsed.size, payload.len() as u32);
     assert_eq!(parsed.data, payload);
 }
@@ -97,7 +100,8 @@ fn object_raw_parse_rejects_malformed_objects() {
     for raw in malformed {
         let obj_raw = ObjectRaw::new(raw.to_vec());
         assert!(
-            obj_raw.parse().is_err(),
+            Object::try_from(obj_raw).is_err(),
+            //obj_raw.parse().is_err(),
             "ObjectRaw::parse should reject malformed input {:?}",
             String::from_utf8_lossy(raw)
         );
@@ -108,10 +112,10 @@ fn object_raw_parse_rejects_malformed_objects() {
 fn tree_object_format_matches_git_octal_modes_and_sorting() {
     // 1. Empty tree -> well-known Git empty tree OID
     let empty_tree: Object = Tree::new(vec![]).into();
-    let empty_raw = ObjectRaw::from(&empty_tree);
+    let empty_raw = ObjectRaw::from(empty_tree);
     assert_eq!(empty_raw.data, b"tree 0\0");
     assert_eq!(
-        encode_oid_to_hex(&hash(&empty_raw.data)),
+        String::from(&hash(&empty_raw.data)),
         "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
     );
 
@@ -120,9 +124,9 @@ fn tree_object_format_matches_git_octal_modes_and_sorting() {
     let oid_b = [0x22u8; 20];
     let oid_c = [0x33u8; 20];
     let tree: Object = Tree::new(vec![
-        (EXECUTABLE_FILE_MODE, oid_c, "foo0".to_string()),
-        (DIRECTORY_MODE, oid_b, "foo".to_string()),
-        (READONLY_FILE_MODE, oid_a, "foo-bar".to_string()),
+        (EXECUTABLE_FILE_MODE, oid_c.into(), "foo0".to_string()),
+        (DIRECTORY_MODE, oid_b.into(), "foo".to_string()),
+        (READONLY_FILE_MODE, oid_a.into(), "foo-bar".to_string()),
     ])
     .into();
 
@@ -138,7 +142,7 @@ fn tree_object_format_matches_git_octal_modes_and_sorting() {
     let mut expected_raw = format!("tree {}\0", expected_body.len()).into_bytes();
     expected_raw.extend_from_slice(&expected_body);
 
-    let actual_raw = ObjectRaw::from(&tree);
+    let actual_raw = ObjectRaw::from(tree);
     assert_eq!(actual_raw.data, expected_raw);
 }
 
@@ -150,7 +154,8 @@ fn database_store_uses_2_38_git_layout_and_is_idempotent() {
     let oid1 = db
         .store(Blob::new(b"hello\n".to_vec()).into())
         .expect("first store should succeed");
-    let hex = encode_oid_to_hex(&oid1);
+    // let hex = encode_oid_to_hex(&oid1);
+    let hex = <String as From<&ObjectId>>::from(&oid1);
     assert_eq!(hex, "ce013625030ba8dba906f756967f9e9ca394464a");
 
     let expected_path = dir.path().join(&hex[..2]).join(&hex[2..]);
@@ -215,8 +220,8 @@ fn index_parse_accepts_real_git_index_and_roundtrips() {
     // Roundtrip: construct a new Index from parsed entries, serialize, and parse back.
     let rebuilt = Index::new(parsed.entries().clone());
     let serialized: Vec<u8> = rebuilt.into();
-    let reparsed =
-        Index::parse(&serialized).expect("Index serialized by rit should be parseable by Index::parse");
+    let reparsed = Index::parse(&serialized)
+        .expect("Index serialized by rit should be parseable by Index::parse");
     assert_eq!(
         common::normalize_index(&reparsed),
         common::normalize_index(&parsed)
@@ -262,7 +267,7 @@ fn index_parse_rejects_corrupted_and_malformed_data() {
         raw.extend_from_slice(&version.to_be_bytes());
         raw.extend_from_slice(&0u32.to_be_bytes());
         let sum = hash(&raw);
-        raw.extend_from_slice(&sum);
+        raw.extend_from_slice(&*sum);
         raw
     };
 
@@ -299,7 +304,7 @@ fn reference_parse_handles_symref_and_oid_and_rejects_invalid() {
 
     // Direct OID ref (Git format: 40 hex chars + "\n")
     let hex = "8108bdc25ef58ffcfe56b8b5e406d64818ddf849";
-    let expected_oid = decode_str_to_oid(hex).unwrap();
+    let expected_oid = hex.try_into().unwrap();
     let direct = Reference::parse(format!("{hex}\n").into_bytes())
         .expect("Valid 40-char hex OID ref should parse");
     assert!(direct.is_oid());
@@ -311,7 +316,7 @@ fn reference_parse_handles_symref_and_oid_and_rejects_invalid() {
         b"",
         b"not-a-valid-ref\n",
         b"8108bdc25ef58ffcfe56b8b5e406d64818ddf84\n", // 39 hex chars
-        b"ref: /etc/passwd\n",                       // absolute path in symref
+        b"ref: /etc/passwd\n",                        // absolute path in symref
     ];
     for raw in invalid {
         assert!(
@@ -343,7 +348,8 @@ fn lockfile_atomic_commit_and_cleanup() {
     assert!(lock_path.exists());
     assert_eq!(fs::read_to_string(&target).unwrap(), "old content\n");
 
-    lf.commit().expect("commit should atomically replace target");
+    lf.commit()
+        .expect("commit should atomically replace target");
 
     // After commit: target has new content and .lock is gone.
     assert!(!lock_path.exists());
@@ -400,7 +406,8 @@ fn lockfile_prevents_double_hold_and_cleans_up_on_drop() {
 
     // A new LockFile can now acquire and commit.
     let mut lf3 = LockFile::new(&target);
-    lf3.hold().expect("should be able to re-acquire lock after drop");
+    lf3.hold()
+        .expect("should be able to re-acquire lock after drop");
     lf3.write_all(b"committed").unwrap();
     lf3.commit().unwrap();
     assert_eq!(fs::read(&target).unwrap(), b"committed");

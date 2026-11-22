@@ -15,8 +15,8 @@ impl References {
         Reference::parse(target_raw)
     }
 
-    pub fn write(&self, relative_path: &RelativePath, oid: ObjectId) -> io::Result<()> {
+    pub fn write(&self, relative_path: &RelativePath, oid: &ObjectId) -> io::Result<()> {
         let target_path = self.path.join(relative_path);
-        fs::write(target_path, oid)
+        fs::write(target_path, <String as From<&ObjectId>>::from(oid))
     }
 }

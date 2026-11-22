@@ -1,8 +1,8 @@
 ## Blob
-```blob {bytes of original contents}\0{contents}```
+```blob {size of original contents}\0{contents}```
 * Oid is computed from this, before compress
 1. 'blob'
-2. Byte size of original content
+2. Byte size of original content, stored as decimal
 3. Content
 
 ## Tree

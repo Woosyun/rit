@@ -35,9 +35,9 @@ impl Index {
 
         // checksum
         let content_len = bytes.len() - 20;
-        let expected_checksum = &bytes[content_len..];
+        let expected_checksum = <ObjectId as TryFrom<&[u8]>>::try_from(&bytes[content_len..])?;
         let calculated_checksum = hash(&bytes[..content_len]);
-        if expected_checksum != &calculated_checksum {
+        if expected_checksum != calculated_checksum {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "checksum is invalid",
@@ -127,7 +127,7 @@ impl Index {
                 uid,
                 gid,
                 file_size,
-                oid: checksum,
+                oid: checksum.into(),
                 flags,
                 extended_flags,
                 relative_path,
@@ -175,7 +175,8 @@ fn read_u16<R: Read>(r: &mut R) -> io::Result<u16> {
     Ok(u16::from_be_bytes(buf))
 }
 
-const DIRC_SIGNATURE: [u8; 4] = ['D' as u8, 'I' as u8, 'R' as u8, 'C' as u8];
+// const DIRC_SIGNATURE: [u8; 4] = [b'D', b'I', b'R', b'C'];
+const DIRC_SIGNATURE: [u8; 4] = *b"DIRC";
 #[derive(Eq, PartialEq, Debug)]
 pub struct IndexHeader {
     signature: [u8; 4],
@@ -225,7 +226,7 @@ pub struct IndexEntry {
     uid: u32,
     gid: u32,
     file_size: u32,
-    pub oid: [u8; 20],
+    pub oid: ObjectId,
 
     /// 1-bit assume-valid flag
     /// 1-bit extended flag (must be zero in version 2)
@@ -246,9 +247,9 @@ impl IndexEntry {
             mtime_nano: stat.mtime_nsec() as u32,
             dev: stat.dev() as u32,
             ino: stat.ino() as u32,
-            mode: stat.mode() as u32,
-            uid: stat.uid() as u32,
-            gid: stat.gid() as u32,
+            mode: stat.mode(),
+            uid: stat.uid(),
+            gid: stat.gid(),
             file_size: stat.size() as u32,
             oid,
             flags: Default::default(),
@@ -259,7 +260,7 @@ impl IndexEntry {
     pub fn mode(&self) -> &u32 {
         &self.mode
     }
-    pub fn oid(&self) -> &[u8; 20] {
+    pub fn oid(&self) -> &ObjectId {
         &self.oid
     }
     pub fn relative_path(&self) -> &RelativePath {
@@ -307,14 +308,12 @@ impl From<Index> for Vec<u8> {
             index
                 .entries
                 .into_iter()
-                .map(|entry| <Vec<u8> as From<IndexEntry>>::from(entry))
-                .flatten()
+                .flat_map(<Vec<u8> as From<IndexEntry>>::from)
                 .collect::<Vec<u8>>(),
             index
                 .extensions
                 .into_iter()
-                .map(|ext| <Vec<u8> as From<IndexExtension>>::from(ext))
-                .flatten()
+                .flat_map(<Vec<u8> as From<IndexExtension>>::from)
                 .collect::<Vec<u8>>(),
         ]
         .concat();

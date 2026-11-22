@@ -10,7 +10,7 @@ impl Database {
         Self { path }
     }
     pub fn store(&self, obj: Object) -> io::Result<ObjectId> {
-        let obj = <ObjectRaw as From<&Object>>::from(&obj);
+        let obj = <ObjectRaw as From<Object>>::from(obj);
         let oid = hash(&obj.data);
 
         let compressed = compress(&obj.data)?;
@@ -33,7 +33,7 @@ impl Database {
         //if target is exists, finish. Return what?
         let mut lf = LockFile::new(target);
         lf.hold()?;
-        lf.write(&compressed)?;
+        lf.write_all(&compressed)?;
 
         Ok(oid)
     }

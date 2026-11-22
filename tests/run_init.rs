@@ -46,7 +46,9 @@ fn init_preserves_existing_commits_and_objects_on_reinit() {
     th.write_file("hello.txt", "world\n");
     th.commit("initial commit", "Alice", "alice@example.com");
 
-    let head_before = th.head_oid_rit().expect("HEAD should resolve before reinit");
+    let head_before = th
+        .head_oid_rit()
+        .expect("HEAD should resolve before reinit");
     let objects_before =
         common::read_objects(&th.rit_path().join(REPOSITORY)).expect("objects before reinit");
 

@@ -7,7 +7,7 @@ pub enum Reference {
 }
 impl Reference {
     pub fn is_oid(&self) -> bool {
-        if let Self::Oid(_) = self { true } else { false }
+        matches!(self, Self::Oid(_))
     }
     pub fn is_symref(&self) -> bool {
         !self.is_oid()
@@ -19,9 +19,7 @@ impl Reference {
             let symref = String::from_utf8_lossy(symref_raw).into_owned();
             Reference::Sym(path::PathBuf::from(symref).try_into()?)
         } else {
-            let oid = raw.try_into().map_err(|_| {
-                io::Error::new(io::ErrorKind::InvalidData, "cannot read ObjectId from this")
-            })?;
+            let oid = <ObjectId as TryFrom<&[u8]>>::try_from(raw.as_ref())?;
             Reference::Oid(oid)
         };
         Ok(reference)

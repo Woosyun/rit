@@ -82,7 +82,10 @@ fn git_reads_full_history_and_trees_created_by_rit() {
 
     let ls_tree = run_git_checked(root, &["ls-tree", "-r", "HEAD"], &[]);
     let ls_tree_str = String::from_utf8_lossy(&ls_tree.stdout);
-    assert!(ls_tree_str.contains("100755 blob "), "run.sh should have mode 100755");
+    assert!(
+        ls_tree_str.contains("100755 blob "),
+        "run.sh should have mode 100755"
+    );
     assert!(ls_tree_str.contains("\trun.sh\n"));
     assert!(ls_tree_str.contains("\tsrc/lib.rs\n"));
     assert!(!ls_tree_str.contains("obsolete.txt"));
@@ -106,11 +109,10 @@ fn rit_commits_on_top_of_git_created_repository() {
     run_git_checked(root, &["add", "-A"], &env);
     run_git_checked(root, &["commit", "-m", "c1 from git"], &env);
 
-    let c1_oid = String::from_utf8_lossy(
-        &run_git_checked(root, &["rev-parse", "HEAD"], &env).stdout,
-    )
-    .trim()
-    .to_string();
+    let c1_oid =
+        String::from_utf8_lossy(&run_git_checked(root, &["rev-parse", "HEAD"], &env).stdout)
+            .trim()
+            .to_string();
 
     // Now commit using rit on top of the git-initialized repo.
     fs::write(root.join("README.md"), "# Hello from rit\n").unwrap();
@@ -128,11 +130,10 @@ fn rit_commits_on_top_of_git_created_repository() {
 
     run_git_checked(root, &["fsck", "--full", "--strict"], &env);
 
-    let parent_of_head = String::from_utf8_lossy(
-        &run_git_checked(root, &["rev-parse", "HEAD~1"], &env).stdout,
-    )
-    .trim()
-    .to_string();
+    let parent_of_head =
+        String::from_utf8_lossy(&run_git_checked(root, &["rev-parse", "HEAD~1"], &env).stdout)
+            .trim()
+            .to_string();
     assert_eq!(
         parent_of_head, c1_oid,
         "rit commit must point to git's commit as its parent"

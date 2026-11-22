@@ -1,13 +1,14 @@
 use crate::prelude::*;
 use std::{error, fs, io, path};
 
+#[derive(Default)]
 pub struct Builder {
     working_directory: Option<path::PathBuf>,
 }
 impl Builder {
     pub fn new() -> Self {
         Self {
-            working_directory: None,
+            working_directory: Default::default(),
         }
     }
     pub fn working_directory<P: AsRef<path::Path>>(mut self, workdir: P) -> Self {

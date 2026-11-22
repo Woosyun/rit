@@ -11,12 +11,12 @@ use references::*;
 pub mod workspace;
 use workspace::*;
 
-pub const REPOSITORY: &'static str = ".git";
-pub const DATABASE: &'static str = "objects";
-pub const REFS: &'static str = "refs";
-pub const HEADS: &'static str = "heads";
-pub const INDEX: &'static str = "index";
-pub const HEAD: &'static str = "HEAD";
+pub const REPOSITORY: &str = ".git";
+pub const DATABASE: &str = "objects";
+pub const REFS: &str = "refs";
+pub const HEADS: &str = "heads";
+pub const INDEX: &str = "index";
+pub const HEAD: &str = "HEAD";
 
 use crate::prelude::*;
 use std::io::Read;
