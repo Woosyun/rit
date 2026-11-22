@@ -63,7 +63,7 @@ impl Repository {
 
     // todo: Fix this to refer recursive ref
     pub fn read_head(&self) -> io::Result<Reference> {
-        let head_path = RelativePath::build(HEAD)?;
+        let head_path = RelativePath::new(HEAD.into());
         self.references.read(&head_path)
     }
 }

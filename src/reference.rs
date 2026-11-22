@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::{io, path};
+use std::io;
 
 pub enum Reference {
     Oid(ObjectId),
@@ -17,7 +17,7 @@ impl Reference {
         //tothink: What if length is 20 and starts with "ref: "
         let reference = if let Some(symref_raw) = raw.strip_prefix(b"refs: ") {
             let symref = String::from_utf8_lossy(symref_raw).into_owned();
-            Reference::Sym(path::PathBuf::from(symref).try_into()?)
+            Reference::Sym(RelativePath::new(symref.into()))
         } else {
             let oid = <ObjectId as TryFrom<&[u8]>>::try_from(raw.as_ref())?;
             Reference::Oid(oid)

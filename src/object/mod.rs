@@ -9,7 +9,6 @@ pub use commit::*;
 
 use std::io;
 use std::io::Write;
-use std::ops::Deref;
 
 /// ObjectId is equal as \[u8; 20],
 /// pointing Object(Tree, Blob, Commit).
@@ -20,23 +19,28 @@ impl ObjectId {
         Self(oid)
     }
 }
-impl Deref for ObjectId {
-    type Target = [u8; 20];
-
-    fn deref(&self) -> &Self::Target {
+impl AsRef<[u8]> for ObjectId {
+    fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
+// impl Deref for ObjectId {
+//     type Target = [u8; 20];
 
-impl<U> AsRef<U> for ObjectId
-where
-    U: ?Sized,
-    <ObjectId as Deref>::Target: AsRef<U>,
-{
-    fn as_ref(&self) -> &U {
-        self.deref().as_ref()
-    }
-}
+//     fn deref(&self) -> &Self::Target {
+//         &self.0
+//     }
+// }
+
+// impl<U> AsRef<U> for ObjectId
+// where
+//     U: ?Sized,
+//     <ObjectId as Deref>::Target: AsRef<U>,
+// {
+//     fn as_ref(&self) -> &U {
+//         self.deref().as_ref()
+//     }
+// }
 
 impl TryFrom<&str> for ObjectId {
     type Error = io::Error;

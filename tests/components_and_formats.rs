@@ -267,7 +267,7 @@ fn index_parse_rejects_corrupted_and_malformed_data() {
         raw.extend_from_slice(&version.to_be_bytes());
         raw.extend_from_slice(&0u32.to_be_bytes());
         let sum = hash(&raw);
-        raw.extend_from_slice(&*sum);
+        raw.extend_from_slice(sum.as_ref());
         raw
     };
 
@@ -299,7 +299,7 @@ fn reference_parse_handles_symref_and_oid_and_rejects_invalid() {
     assert!(!sym.is_oid());
     assert_eq!(
         sym.relative_path(),
-        Some(&RelativePath::build("refs/heads/main").unwrap())
+        Some(&RelativePath::new("refs/heads/main".into()))
     );
 
     // Direct OID ref (Git format: 40 hex chars + "\n")
@@ -476,20 +476,20 @@ fn lockfile_concurrent_threads_mutual_exclusion() {
 
 #[test]
 fn relative_path_validation_and_traversal_rejection() {
-    assert!(RelativePath::build("a.txt").is_ok());
-    assert!(RelativePath::build("dir/sub/file.txt").is_ok());
+    assert!(get_relative_path(".", "a.txt").is_ok());
+    assert!(get_relative_path(".", "dir/sub/file.txt").is_ok());
 
     // Absolute paths must be rejected.
-    assert!(RelativePath::build("/etc/passwd").is_err());
-    assert!(RelativePath::build("/").is_err());
+    assert!(get_relative_path(".", "/etc/passwd").is_err());
+    assert!(get_relative_path(".", "/").is_err());
 
     // Parent directory traversal (`..`) must be rejected to prevent path escape attacks.
     assert!(
-        RelativePath::build("../escape.txt").is_err(),
+        get_relative_path(".", "../escape.txt").is_err(),
         "RelativePath should reject leading '..' traversal"
     );
     assert!(
-        RelativePath::build("a/../../escape.txt").is_err(),
+        get_relative_path(".", "a/../../escape.txt").is_err(),
         "RelativePath should reject embedded '..' traversal"
     );
 

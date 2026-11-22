@@ -1,47 +1,25 @@
 use std::ops::Deref;
-use std::{error, io, ops, path};
+use std::{error, ops, path};
 
-pub fn get_relative_path<P: AsRef<path::Path>>(
-    base: P,
-    target: P,
-) -> Result<RelativePath, Box<dyn error::Error>> {
-    let path = target
-        .as_ref()
-        .canonicalize()?
-        .strip_prefix(base.as_ref())?
-        .to_path_buf();
+pub fn get_relative_path<B, T>(base: B, target: T) -> Result<RelativePath, Box<dyn error::Error>>
+where
+    B: AsRef<path::Path>,
+    T: AsRef<path::Path>,
+{
+    let base = base.as_ref().canonicalize()?;
+    let target = target.as_ref().canonicalize()?;
+    let path = target.strip_prefix(&base)?.to_path_buf();
 
-    RelativePath::build(path).map_err(Into::into)
+    Ok(RelativePath::new(path))
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct RelativePath(path::PathBuf);
 impl RelativePath {
-    // This method is being used by "HEAD" constant.
-    /*
+    // This method is used to convert path
+    // given by tree, index, etc.
     pub fn new(path: path::PathBuf) -> Self {
         Self(path)
-    }
-    */
-
-    pub fn build<P: AsRef<path::Path>>(p: P) -> io::Result<Self> {
-        //todo: check whether path is canonicalized or not.
-        let p = p.as_ref();
-        if !p.is_relative() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "path is not relative",
-            ));
-        }
-        let rp = RelativePath(p.to_path_buf());
-        Ok(rp)
-    }
-}
-
-impl TryFrom<path::PathBuf> for RelativePath {
-    type Error = io::Error;
-    fn try_from(p: path::PathBuf) -> Result<Self, Self::Error> {
-        Self::build(p)
     }
 }
 

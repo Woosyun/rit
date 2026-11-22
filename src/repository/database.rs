@@ -16,6 +16,7 @@ impl Database {
         let compressed = compress(&obj.data)?;
 
         let dir_name: String = oid
+            .as_ref()
             .iter()
             .take(2)
             .map(|b| format!("{:02x}", b))
@@ -25,6 +26,7 @@ impl Database {
             fs::create_dir(&dir)?;
         }
         let file_name = oid
+            .as_ref()
             .iter()
             .skip(2)
             .map(|b| format!("{:02x}", b))

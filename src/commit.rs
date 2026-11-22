@@ -133,7 +133,7 @@ impl Command {
         // 4. Update head
         let head = self.repository.read_head()?;
         let head = if head.is_oid() {
-            RelativePath::build(HEAD)?
+            RelativePath::new(HEAD.into())
         } else {
             head.relative_path()
                 .expect("This reference(head) should be SymRef")

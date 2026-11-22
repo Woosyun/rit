@@ -107,7 +107,7 @@ impl Index {
             let name = String::from_utf8(name_bytes)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{:?}", e)))?;
             //let relative_path = path::PathBuf::from(relative_path).try_into()?;
-            let relative_path = RelativePath::build(name)?;
+            let relative_path = RelativePath::new(name.into());
 
             let entry_len = cursor.position() - entry_start;
             let pad_len = (8 - (entry_len % 8)) % 8;
@@ -319,6 +319,6 @@ impl From<Index> for Vec<u8> {
         .concat();
         let checksum = hash(&raw);
 
-        [raw, checksum.to_vec()].concat()
+        [raw, checksum.as_ref().to_vec()].concat()
     }
 }
