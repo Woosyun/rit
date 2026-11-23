@@ -10,32 +10,22 @@ impl Database {
         Self { path }
     }
     pub fn store(&self, obj: Object) -> io::Result<ObjectId> {
-        let obj = <ObjectRaw as From<Object>>::from(obj);
-        let oid = hash(&obj.data);
+        let obj_raw = <ObjectRaw as From<Object>>::from(obj);
+        let oid = hash(&obj_raw.data);
+        let oid_str = <String as From<&ObjectId>>::from(&oid);
 
-        let compressed = compress(&obj.data)?;
+        let compressed = compress(&obj_raw.data)?;
 
-        let dir_name: String = oid
-            .as_ref()
-            .iter()
-            .take(2)
-            .map(|b| format!("{:02x}", b))
-            .collect::<String>();
-        let dir = self.path.join(dir_name);
+        let dir = self.path.join(&oid_str[..2]);
         if !dir.exists() {
             fs::create_dir(&dir)?;
         }
-        let file_name = oid
-            .as_ref()
-            .iter()
-            .skip(2)
-            .map(|b| format!("{:02x}", b))
-            .collect::<String>();
-        let target = dir.join(file_name);
+        let target = dir.join(&oid_str[2..]);
         //if target is exists, finish. Return what?
         let mut lf = LockFile::new(target);
         lf.hold()?;
         lf.write_all(&compressed)?;
+        lf.commit()?;
 
         Ok(oid)
     }

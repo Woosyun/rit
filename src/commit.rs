@@ -111,16 +111,17 @@ impl Command {
 
         // 3. Create commit
         let mut parent_ref = self.repository.read_head()?;
+        // If symref, get oid recursively.
         while !parent_ref.is_oid() {
             let next_ref = parent_ref
                 .relative_path()
                 .expect("At least reference should be SymRef or ObjectId");
             parent_ref = self.repository.references.read(next_ref)?;
         }
-        let parent_oid = parent_ref.oid().expect("The reference should be ObjectId");
+        let parent_oid = parent_ref.oid().unwrap();
         let commit = Commit::new(
             tree_oid,
-            parent_oid.clone(),
+            parent_oid.to_owned(),
             self.author,
             self.committer,
             self.message,

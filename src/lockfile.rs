@@ -29,7 +29,7 @@
 // can I pass responsibility of actual handling file
 // to something like tempdir?
 
-use std::{error, fs, io, path};
+use std::{fs, io, path};
 
 pub struct LockFile {
     /// Temporary path, "*.lock".
@@ -59,15 +59,18 @@ impl LockFile {
 
         Ok(())
     }
-    pub fn commit(mut self) -> Result<(), Box<dyn error::Error>> {
+    pub fn commit(mut self) -> io::Result<()> {
         if self.file.is_none() {
-            return Err("forbidden operation".into());
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "Holding lock file is needed to do this operation",
+            ));
         }
 
         // For Windows compatibility, drop file before renaming.
         drop(self.file.take());
 
-        fs::rename(&self.path, &self.target_path).map_err(Into::into)
+        fs::rename(&self.path, &self.target_path)
     }
 }
 

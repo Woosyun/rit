@@ -15,7 +15,7 @@ impl Reference {
 
     pub fn parse(raw: Vec<u8>) -> io::Result<Self> {
         //tothink: What if length is 20 and starts with "ref: "
-        let reference = if let Some(symref_raw) = raw.strip_prefix(b"refs: ") {
+        let reference = if let Some(symref_raw) = raw.strip_prefix(b"ref: ") {
             let symref = String::from_utf8_lossy(symref_raw).into_owned();
             Reference::Sym(RelativePath::new(symref.into()))
         } else {

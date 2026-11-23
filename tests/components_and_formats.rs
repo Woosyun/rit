@@ -154,7 +154,6 @@ fn database_store_uses_2_38_git_layout_and_is_idempotent() {
     let oid1 = db
         .store(Blob::new(b"hello\n".to_vec()).into())
         .expect("first store should succeed");
-    // let hex = encode_oid_to_hex(&oid1);
     let hex = <String as From<&ObjectId>>::from(&oid1);
     assert_eq!(hex, "ce013625030ba8dba906f756967f9e9ca394464a");
 
