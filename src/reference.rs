@@ -1,5 +1,7 @@
 use crate::prelude::*;
-use std::io;
+use std::fmt;
+
+pub const SYM_REF_PREFIX: &str = "ref: ";
 
 pub enum Reference {
     Oid(ObjectId),
@@ -13,29 +15,35 @@ impl Reference {
         !self.is_oid()
     }
 
-    pub fn parse(raw: Vec<u8>) -> io::Result<Self> {
-        //tothink: What if length is 20 and starts with "ref: "
-        let reference = if let Some(symref_raw) = raw.strip_prefix(b"ref: ") {
-            let symref = String::from_utf8_lossy(symref_raw).into_owned();
-            Reference::Sym(RelativePath::new(symref.into()))
-        } else {
-            let oid = <ObjectId as TryFrom<&[u8]>>::try_from(raw.as_ref())?;
-            Reference::Oid(oid)
-        };
-        Ok(reference)
-    }
-
     pub fn oid(&self) -> Option<&ObjectId> {
         match self {
             Reference::Oid(oid) => Some(oid),
             _ => None,
         }
     }
-
     pub fn relative_path(&self) -> Option<&RelativePath> {
         match self {
             Reference::Sym(relative_path) => Some(relative_path),
             _ => None,
+        }
+    }
+}
+impl From<ObjectId> for Reference {
+    fn from(oid: ObjectId) -> Self {
+        Self::Oid(oid)
+    }
+}
+impl From<RelativePath> for Reference {
+    fn from(relative_path: RelativePath) -> Self {
+        Self::Sym(relative_path)
+    }
+}
+
+impl fmt::Display for Reference {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Reference::Oid(oid) => write!(f, "{}", oid),
+            Reference::Sym(sym_ref) => write!(f, "{}", sym_ref),
         }
     }
 }

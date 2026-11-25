@@ -1,4 +1,4 @@
-use std::{error, fs, io, path};
+use std::{error, fs, path};
 
 /// Responsible for handle workspace.
 /// To read workspace and get file paths, use [`Workspace::list_files`].
@@ -6,10 +6,10 @@ pub struct Workspace {
     pub path: path::PathBuf,
 }
 impl Workspace {
-    pub fn build<P: AsRef<path::Path>>(workdir: P) -> io::Result<Self> {
-        let path = fs::canonicalize(workdir.as_ref())?;
-        let ws = Self { path };
-        Ok(ws)
+    pub fn new<P: AsRef<path::Path>>(path: P) -> Self {
+        Self {
+            path: path.as_ref().to_path_buf(),
+        }
     }
 
     /// This method returns vector of paths representing all files in the workspace.
@@ -60,7 +60,7 @@ pub mod tests {
 
         let tempdir = TempDir::new("test_read_correctly").unwrap();
 
-        let workdir = tempdir.path();
+        let workdir = tempdir.path().canonicalize().unwrap();
         let mut expected = collections::HashSet::new();
 
         let path1 = workdir.join("a.txt");
@@ -78,8 +78,7 @@ pub mod tests {
         //add symlink which is not valid entry
         symlink(workdir.join("a.txt"), workdir.join("a_link")).unwrap();
 
-        let real = Workspace::build(workdir)
-            .expect("Given path should be valid")
+        let real = Workspace::new(workdir)
             .list_files()
             .unwrap()
             .into_iter()

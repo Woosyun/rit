@@ -5,8 +5,8 @@
 pub mod database;
 use database::*;
 
-pub mod references;
-use references::*;
+// pub mod references;
+// use references::*;
 
 pub mod workspace;
 use workspace::*;
@@ -22,31 +22,23 @@ use crate::prelude::*;
 use std::io::Read;
 use std::{fs, io, path};
 
-//tothink:
-//Index is only one representing actual data.
-//Refs/Database/Workspace are abstracted representing logics.
-//Now, how are you gonna setup interfaces?
-
 pub struct Repository {
     pub path: path::PathBuf,
     pub workspace: Workspace,
     pub database: Database,
-    pub references: References,
 }
 impl Repository {
     pub fn build<P: AsRef<path::Path>>(workdir: P) -> io::Result<Self> {
-        let workdir = workdir.as_ref().to_path_buf();
+        let workdir = workdir.as_ref().canonicalize()?;
 
         let path = workdir.join(REPOSITORY);
-        let workspace = Workspace::build(&workdir)?;
+        let workspace = Workspace::new(&workdir);
         let database = Database::new(path.join(DATABASE));
-        let references = References::new(path.join(REFS));
 
         let repo = Self {
             path,
             workspace,
             database,
-            references,
         };
         Ok(repo)
     }
@@ -61,9 +53,32 @@ impl Repository {
         fs::write(self.path.join(INDEX), <Vec<u8> as From<Index>>::from(index))
     }
 
-    // todo: Fix this to refer recursive ref
     pub fn read_head(&self) -> io::Result<Reference> {
-        let head_path = RelativePath::new(HEAD.into());
-        self.references.read(&head_path)
+        let head_path = get_relative_path(&self.path, HEAD)?;
+        self.read_reference(&head_path)
+    }
+    pub fn read_reference(&self, dest_relative_path: &RelativePath) -> io::Result<Reference> {
+        let path = self.path.join(dest_relative_path);
+        let ref_str = fs::read_to_string(path)?;
+        let reference = if let Some(symref) = ref_str.strip_prefix(SYM_REF_PREFIX) {
+            let relative_path =
+                get_relative_path(&self.path, path::Path::new(symref).canonicalize()?)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+            Reference::Sym(relative_path)
+        } else {
+            let oid = <ObjectId as TryFrom<&str>>::try_from(&ref_str)?;
+            Reference::Oid(oid)
+        };
+
+        Ok(reference)
+    }
+    pub fn write_reference(
+        &self,
+        dest_relative_path: &RelativePath,
+        reference: &Reference,
+    ) -> io::Result<()> {
+        let path = self.path.join(dest_relative_path);
+        let ref_str = reference.to_string();
+        fs::write(path, ref_str)
     }
 }

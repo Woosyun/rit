@@ -12,7 +12,8 @@ impl Database {
     pub fn store(&self, obj: Object) -> io::Result<ObjectId> {
         let obj_raw = <ObjectRaw as From<Object>>::from(obj);
         let oid = hash(&obj_raw.data);
-        let oid_str = <String as From<&ObjectId>>::from(&oid);
+        // let oid_str = <String as From<&ObjectId>>::from(&oid);
+        let oid_str = oid.to_string();
 
         let compressed = compress(&obj_raw.data)?;
 

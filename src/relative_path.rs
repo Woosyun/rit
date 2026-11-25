@@ -1,14 +1,38 @@
 use std::ops::Deref;
-use std::{error, ops, path};
+use std::{io, ops, path};
 
-pub fn get_relative_path<B, T>(base: B, target: T) -> Result<RelativePath, Box<dyn error::Error>>
+pub fn is_path_relative<B, T>(base: B, target: T) -> io::Result<bool>
+where
+    B: AsRef<path::Path>,
+    T: AsRef<path::Path>,
+{
+    let base_abs = base.as_ref().canonicalize()?;
+    let target_abs = target.as_ref().canonicalize()?;
+    let path = target_abs.strip_prefix(&base_abs).map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            "target path is not relative to base path",
+        )
+    })?;
+
+    Ok(path != target.as_ref())
+}
+pub fn get_relative_path<B, T>(base: B, target: T) -> io::Result<RelativePath>
 where
     B: AsRef<path::Path>,
     T: AsRef<path::Path>,
 {
     let base = base.as_ref().canonicalize()?;
     let target = target.as_ref().canonicalize()?;
-    let path = target.strip_prefix(&base)?.to_path_buf();
+    let path = target
+        .strip_prefix(&base)
+        .map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "target path is not relative to base path",
+            )
+        })?
+        .to_path_buf();
 
     Ok(RelativePath::new(path))
 }
@@ -33,5 +57,13 @@ impl ops::Deref for RelativePath {
     type Target = path::PathBuf;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+use std::fmt;
+impl fmt::Display for RelativePath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = self.0.to_str().unwrap_or_default();
+        write!(f, "{}", s)
     }
 }

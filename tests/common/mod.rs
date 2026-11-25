@@ -316,8 +316,8 @@ impl TestHarness {
             read_objects(&git).unwrap_or_else(|e| panic!("Failed to read git objects: {e}"));
 
         if rit_objects != git_objects {
-            let rit_hex: Vec<String> = rit_objects.keys().map(String::from).collect();
-            let git_hex: Vec<String> = git_objects.keys().map(String::from).collect();
+            let rit_hex: Vec<String> = rit_objects.keys().map(ToString::to_string).collect();
+            let git_hex: Vec<String> = git_objects.keys().map(ToString::to_string).collect();
             let mut details = format!(
                 "Objects mismatch between rit and git!\n  rit OIDs ({}): {:?}\n  git OIDs ({}): {:?}\n",
                 rit_hex.len(),
@@ -329,7 +329,8 @@ impl TestHarness {
                 if !git_objects.contains_key(oid) {
                     details.push_str(&format!(
                         "  [only in rit] {} => {:?}\n",
-                        String::from(oid),
+                        // String::from(oid),
+                        oid,
                         String::from_utf8_lossy(raw)
                     ));
                 }
@@ -338,7 +339,8 @@ impl TestHarness {
                 if !rit_objects.contains_key(oid) {
                     details.push_str(&format!(
                         "  [only in git] {} => {:?}\n",
-                        String::from(oid),
+                        // String::from(oid),
+                        oid,
                         String::from_utf8_lossy(raw)
                     ));
                 }
@@ -524,7 +526,8 @@ pub fn read_objects(repo: &Path) -> TestResult<BTreeMap<ObjectId, Vec<u8>>> {
                 return Err(format!(
                     "SHA-1 mismatch for object {}: content hashes to {}",
                     oid_str,
-                    String::from(&actual_oid)
+                    // String::from(&actual_oid)
+                    actual_oid,
                 )
                 .into());
             }

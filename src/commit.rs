@@ -116,7 +116,7 @@ impl Command {
             let next_ref = parent_ref
                 .relative_path()
                 .expect("At least reference should be SymRef or ObjectId");
-            parent_ref = self.repository.references.read(next_ref)?;
+            parent_ref = self.repository.read_reference(next_ref)?;
         }
         let parent_oid = parent_ref.oid().unwrap();
         let commit = Commit::new(
@@ -141,7 +141,8 @@ impl Command {
                 .clone()
         };
 
-        self.repository.references.write(&head, &commit_oid)?;
+        self.repository
+            .write_reference(&head, &<Reference as From<ObjectId>>::from(commit_oid))?;
         self.repository.write_index(index)?;
 
         Ok(())

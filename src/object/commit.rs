@@ -49,13 +49,15 @@ impl From<&Commit> for Object {
         writeln!(
             &mut data,
             "tree {}",
-            <String as From<&ObjectId>>::from(&commit.tree)
+            commit.tree,
+            // <String as From<&ObjectId>>::from(&commit.tree)
         )
         .unwrap();
         writeln!(
             &mut data,
             "parent {}",
-            <String as From<&ObjectId>>::from(&commit.parent)
+            // <String as From<&ObjectId>>::from(&commit.parent)
+            commit.parent,
         )
         .unwrap();
         writeln!(

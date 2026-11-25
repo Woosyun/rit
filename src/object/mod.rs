@@ -24,23 +24,6 @@ impl AsRef<[u8]> for ObjectId {
         &self.0
     }
 }
-// impl Deref for ObjectId {
-//     type Target = [u8; 20];
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.0
-//     }
-// }
-
-// impl<U> AsRef<U> for ObjectId
-// where
-//     U: ?Sized,
-//     <ObjectId as Deref>::Target: AsRef<U>,
-// {
-//     fn as_ref(&self) -> &U {
-//         self.deref().as_ref()
-//     }
-// }
 
 impl TryFrom<&str> for ObjectId {
     type Error = io::Error;
@@ -84,12 +67,10 @@ impl TryFrom<&[u8]> for ObjectId {
         Ok(Self::new(oid))
     }
 }
-impl From<&ObjectId> for String {
-    fn from(oid: &ObjectId) -> String {
-        oid.0
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<String>()
+use std::fmt;
+impl fmt::Display for ObjectId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.iter().try_for_each(|b| write!(f, "{:02x}", b))
     }
 }
 

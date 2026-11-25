@@ -182,7 +182,8 @@ fn commit_add_modify_delete_and_delete_all_lifecycle() {
             Some(raw),
             "Historical object {} must not be lost or altered",
             // encode_oid_to_hex(oid)
-            <String as From<&ObjectId>>::from(oid)
+            // <String as From<&ObjectId>>::from(oid)
+            oid
         );
     }
 }
