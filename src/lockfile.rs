@@ -25,10 +25,6 @@
 //! pros: true cross platform safety
 //! cons: fragile
 
-// tothink:
-// can I pass responsibility of actual handling file
-// to something like tempdir?
-
 use std::{fs, io, path};
 
 pub struct LockFile {

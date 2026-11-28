@@ -34,7 +34,7 @@ impl Workspace {
 
             let file_type = direntry.file_type()?;
             if file_type.is_symlink() {
-                //tothink: consider how to deal with symlink
+                // todo: deal with symlink
                 continue;
             } else if file_type.is_dir() {
                 self.read_dir_recursively(target_path, hash)?;

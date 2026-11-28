@@ -10,7 +10,7 @@ pub mod repository;
 
 // utilities
 pub mod lockfile;
-pub mod relative_path;
+// pub mod relative_path;
 pub mod sha1;
 pub mod zlib;
 
@@ -24,7 +24,8 @@ pub mod prelude {
     pub use super::repository::*;
 
     pub use super::lockfile::*;
-    pub use super::relative_path::*;
+    // pub use super::relative_path::*;
+    pub type RelativePath = std::path::PathBuf;
     pub use super::sha1::*;
     pub use super::zlib::*;
 }

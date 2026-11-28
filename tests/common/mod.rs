@@ -457,7 +457,7 @@ pub fn read_references(repo: &Path) -> TestResult<BTreeMap<RelativePath, String>
     let refs_dir_canon = fs::canonicalize(&refs_dir)?;
     visit_dirs(&refs_dir_canon, &mut |dir_entry: &fs::DirEntry| {
         let path = dir_entry.path();
-        let relative_path = get_relative_path(&refs_dir_canon, &path)?;
+        let relative_path = path.strip_prefix(repo)?.to_path_buf();
         let data = fs::read_to_string(&path)?;
         m.insert(relative_path, data);
         Ok(())

@@ -54,17 +54,16 @@ impl Repository {
     }
 
     pub fn read_head(&self) -> io::Result<Reference> {
-        let head_path = get_relative_path(&self.path, HEAD)?;
-        self.read_reference(&head_path)
+        self.read_reference(&HEAD.into())
     }
+
+    // tothink:
+    // Why Repository is responsible for parsing raw reference to Reference?
     pub fn read_reference(&self, dest_relative_path: &RelativePath) -> io::Result<Reference> {
         let path = self.path.join(dest_relative_path);
         let ref_str = fs::read_to_string(path)?;
-        let reference = if let Some(symref) = ref_str.strip_prefix(SYM_REF_PREFIX) {
-            let relative_path =
-                get_relative_path(&self.path, path::Path::new(symref).canonicalize()?)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
-            Reference::Sym(relative_path)
+        let reference = if let Some(sym_ref) = ref_str.strip_prefix(SYM_REF_PREFIX) {
+            Reference::Sym(sym_ref.into())
         } else {
             let oid = <ObjectId as TryFrom<&str>>::try_from(&ref_str)?;
             Reference::Oid(oid)

@@ -95,9 +95,9 @@ impl Command {
                     .store(<Object as From<Blob>>::from(blob))?;
                 let metadata = fs::metadata(path)?;
                 //let relative_path = self.repository.workspace.relative_path(path)?;
-                let relative_path = get_relative_path(&self.repository.workspace.path, path)?;
+                // let relative_path = get_relative_path(&self.repository.workspace.path, path)?;
 
-                Ok(IndexEntry::new(metadata, oid, relative_path))
+                Ok(IndexEntry::new(metadata, oid, path.to_path_buf()))
             })
             .collect::<Result<Vec<IndexEntry>, Box<dyn error::Error>>>()?;
         let index = Index::new(index_entries);
@@ -132,17 +132,15 @@ impl Command {
             .store(<Object as From<&Commit>>::from(&commit))?;
 
         // 4. Update head
-        let head = self.repository.read_head()?;
-        let head = if head.is_oid() {
-            RelativePath::new(HEAD.into())
+        // let head = self.repository.read_head()?;
+        let reference = if let Reference::Sym(sym_ref) = self.repository.read_head()? {
+            sym_ref
         } else {
-            head.relative_path()
-                .expect("This reference(head) should be SymRef")
-                .clone()
+            HEAD.into()
         };
 
         self.repository
-            .write_reference(&head, &<Reference as From<ObjectId>>::from(commit_oid))?;
+            .write_reference(&reference, &<Reference as From<ObjectId>>::from(commit_oid))?;
         self.repository.write_index(index)?;
 
         Ok(())

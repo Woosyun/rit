@@ -104,10 +104,9 @@ impl Index {
                 }
                 name_bytes.push(b[0]);
             }
-            let name = String::from_utf8(name_bytes)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{:?}", e)))?;
-            //let relative_path = path::PathBuf::from(relative_path).try_into()?;
-            let relative_path = RelativePath::new(name.into());
+            let relative_path = String::from_utf8(name_bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{:?}", e)))?
+                .into();
 
             let entry_len = cursor.position() - entry_start;
             let pad_len = (8 - (entry_len % 8)) % 8;
